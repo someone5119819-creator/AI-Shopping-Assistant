@@ -72,10 +72,14 @@ OUTPUT FORMAT RULES (CRITICAL):
 FORMAT FOR ACTIONS:
 Search: {"action": "search", "query": "generic keywords", "message": "Let me see what we have that matches your needs..."}
 
+CRITICAL REMINDER BEFORE PRESENTING:
+- Maximum 2 products. If you present 3 or more, you have FAILED.
+- Each recommendation MUST include "I chose this because..." reasoning.
+
 System Context (Search Results):
 """
 
-def search_products(query, limit=5):
+def search_products(query, limit=3):
     """Search products using the existing RAG API"""
     try:
         # Use GET method with query parameters as per api.py specification
