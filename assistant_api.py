@@ -201,7 +201,6 @@ def chat():
                 if action == 'search':
                     search_query = action_data.get('query', user_message)
                     products = search_products(search_query)
-                    ai_message = action_data.get('message', 'Let me search for that...')
                     
                     # INJECT CONTEXT: Add found products to history so AI "remembers" them
                     if products:
@@ -212,11 +211,19 @@ def chat():
                         
                         # Add hidden system message to history
                         session['history'].append({'role': 'system', 'content': product_context})
+                        
+                        # IMMEDIATELY generate AI response with reasoning
+                        session['history'].append({'role': 'user', 'content': user_message})
+                        ai_message = generate_ollama_response(session['history'])
+                        
+                        # Skip adding messages again after this block (flag)
+                        messages_already_added = True
+                    else:
+                        ai_message = "I don't have any products matching that description in stock."
                 
                 elif action == 'multi_search':
                     categories = action_data.get('categories', [])
                     products = multi_category_search(categories)
-                    ai_message = action_data.get('message', 'Let me find the best options for you...')
                     
                     # INJECT CONTEXT: Add found products to history (1 per category)
                     if products:
@@ -227,6 +234,16 @@ def chat():
                         
                         # Add hidden system message to history
                         session['history'].append({'role': 'system', 'content': product_context})
+                        
+                        # IMMEDIATELY generate AI response with reasoning
+                        session['history'].append({'role': 'user', 'content': user_message})
+                        ai_message = generate_ollama_response(session['history'])
+                        
+                        # Skip adding messages again after this block (flag)
+                        messages_already_added = True
+                    else:
+                        ai_message = "I couldn't find products for all those categories."
+                    
                     
                 elif action == 'add_to_cart':
                     product_name = action_data.get('product', '')
@@ -274,9 +291,10 @@ def chat():
             except json.JSONDecodeError:
                 pass  # If JSON parsing fails, just continue with the text response
         
-        # Add to session history
-        session['history'].append({'role': 'user', 'content': user_message})
-        session['history'].append({'role': 'assistant', 'content': ai_message})
+        # Add to session history (skip if already added in action handler)
+        if not messages_already_added:
+            session['history'].append({'role': 'user', 'content': user_message})
+            session['history'].append({'role': 'assistant', 'content': ai_message})
         
         # Prepare response
         response_data = {
