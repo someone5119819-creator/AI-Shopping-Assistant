@@ -1,324 +1,116 @@
-# Shopify RAG Knowledge Base
+# AI Shopping Assistant - "The Smart Consultant"
 
-A production-ready RAG (Retrieval Augmented Generation) system for semantic search on Shopify products. This system fetches products from your Shopify store, generates embeddings, stores them in a vector database, and provides powerful semantic search capabilities through both Python API and REST API.
+A sophisticated, RAG-powered voice shopping assistant that mimics a high-end photography & audio equipment consultant. It features real-time voice interaction, strict needs analysis, and curated recommendations.
 
-## 🌟 Features
+![Project Status](https://img.shields.io/badge/Status-Active-success)
+![Tech Stack](https://img.shields.io/badge/Stack-React%20%7C%20Flask%20%7C%20RAG-blue)
 
-- **Semantic Search**: Find products using natural language queries
-- **Vector Database**: ChromaDB for efficient similarity search
-- **Local Embeddings**: Free Sentence Transformers (no API keys needed)
-- **REST API**: FastAPI-based HTTP endpoints for easy integration
-- **Advanced Filtering**: Search by price range, category, vendor, and more
-- **Similar Products**: Find products similar to a reference item
-- **RAG Integration**: Optional LLM integration for natural language responses
-- **Production Ready**: Proper error handling, rate limiting, and configuration management
+## 🌟 Key Features
 
-## 📋 Prerequisites
+### 1. "Smart Consultant" Logic
+Unlike generic chatbots, this assistant follows a strict 3-phase consulting process:
+- **Phase 1: Needs Analysis**: Pauses to ask clarifying questions for broad requests (e.g., "I need a camera" -> "Vlogging or Cinema?").
+- **Phase 2: Deep Search**: Uses Hybrid Search (Keyword + Semantic) to find products in the local ChromaDB.
+- **Phase 3: Curated Presentation**: filters results to present **ONLY the top 1-2 best options** with personalized reasoning.
 
-- Python 3.8 or higher
-- Shopify store with Admin API access
-- Shopify Admin API access token
+### 2. Strict Behavioral Guardrails
+- **Absolute Whitelist**: Discusses **ONLY** Cameras, Lenses, Audio, and Lighting.
+- **Explicit Blacklist**: Immediately refuses to discuss Software, Code Editors, Computers, or General knowledge.
+- **Zero Hallucination**: Strict "Database Grounding" means it never recommends products not in stock.
 
-## 🚀 Quick Start
+### 3. Voice-First Interface
+- **Always-On Mic**: Continuous listening for seamless conversation.
+- **Live Transcript**: Real-time display of user speech and AI responses.
+- **Orb Visualizer**: Reactive audio visualizer for AI speech.
+- **ElevenLabs TTS**: High-quality, lifelike voice output.
 
-### 1. Installation
+## 🏗️ Architecture
 
+### Frontend (`/frontend_react`)
+- **Framework**: React 18 + Vite
+- **UI Library**: Material UI (MUI)
+- **State**: Custom `useAssistant` hook for managing WebSockets, Audio, and UI state.
+
+### Backend (`/`)
+- **API**: Flask
+- **LLM**: Ollama (Llama 3 / Mistral)
+- **RAG Engine**:
+  - **DB**: ChromaDB (Vector Store)
+  - **Embeddings**: `all-MiniLM-L6-v2` (Sentence Transformers)
+  - **Search**: Hybrid (BM25 + Cosine Similarity)
+- **TTS**: ElevenLabs API
+
+## 🚀 Setup & Installation
+
+### Prerequisites
+- Python 3.8+
+- Node.js 18+
+- [Ollama](https://ollama.ai/) running locally
+- ElevenLabs API Key
+
+### 1. Clone & Install Backend
 ```bash
-# Clone or navigate to the project directory
-cd shopify_rag
+git clone https://github.com/someone5119819-creator/AI-Shopping-Assistant.git
+cd AI-Shopping-Assistant
 
-# Create a virtual environment (recommended)
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Create Virtual Env
+python3 -m venv venv
+source venv/bin/activate
 
-# Install dependencies
+# Install Dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Configuration
-
-Create a `.env` file from the template:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and add your Shopify credentials:
-
-```env
-SHOPIFY_SHOP_URL=https://your-store.myshopify.com
-SHOPIFY_API_VERSION=2025-10
-SHOPIFY_ACCESS_TOKEN=your_access_token_here
-```
-
-### 3. Fetch and Index Products
-
-```bash
-# Fetch products from Shopify
-python shopify_fetcher.py
-
-# Process and index products (this will take a few minutes on first run)
-python -c "
-from vector_store import VectorStore
-from data_processor import ProductDataProcessor
-import json
-
-with open('products.json', 'r') as f:
-    products = json.load(f)
-
-processor = ProductDataProcessor()
-documents = processor.process_products(products)
-
-store = VectorStore()
-store.add_documents(documents)
-"
-```
-
-### 4. Try It Out!
-
-```bash
-# Run basic search examples
-python examples/basic_search.py
-
-# Run RAG query examples
-python examples/rag_query.py
-
-# Or start the REST API
-python api.py
-# Then visit http://localhost:8000/docs for interactive API documentation
-```
-
-## 💡 Usage Examples
-
-### Python API
-
-```python
-from search import ProductSearch
-
-# Initialize search
-search = ProductSearch()
-
-# Basic search
-results = search.search("comfortable running shoes", top_k=5)
-
-# Search with price range
-results = search.search_by_price_range(
-    query="headphones",
-    min_price=20.0,
-    max_price=100.0,
-    top_k=5
-)
-
-# Find similar products
-similar = search.get_similar_products(product_id="12345", top_k=5)
-
-# Print results
-for result in results:
-    print(f"{result['metadata']['title']} - ${result['metadata']['price']}")
-    print(f"Relevance: {result['relevance_score']:.2%}\n")
-```
-
-### REST API
-
-Start the server:
-```bash
-python api.py
-```
-
-Make requests:
-```bash
-# Search products
-curl "http://localhost:8000/search?q=wireless+headphones&top_k=5"
-
-# Search with filters
-curl "http://localhost:8000/search?q=shoes&vendor=Nike&top_k=5"
-
-# Get statistics
-curl "http://localhost:8000/stats"
-
-# Re-index products
-curl -X POST "http://localhost:8000/index" \
-  -H "Content-Type: application/json" \
-  -d '{"force_refresh": true}'
-```
-
-### Full RAG with LLM
-
-For natural language responses, set your OpenAI API key:
-
-```bash
-export OPENAI_API_KEY=your_key_here
-```
-
-Then use the RAG query engine:
-
-```python
-from examples.rag_query import RAGQueryEngine
-
-rag = RAGQueryEngine()
-response = rag.query("I need a gift for my tech-savvy friend")
-print(response)
-```
-
-## 📁 Project Structure
-
-```
-shopify_rag/
-├── config.py              # Configuration management
-├── shopify_fetcher.py     # Fetch products from Shopify
-├── data_processor.py      # Process products into searchable documents
-├── embeddings.py          # Generate embeddings using Sentence Transformers
-├── vector_store.py        # ChromaDB vector database operations
-├── search.py              # High-level search interface
-├── api.py                 # FastAPI REST API
-├── requirements.txt       # Python dependencies
-├── .env.example          # Environment variables template
-├── .gitignore            # Git ignore file
-└── examples/
-    ├── basic_search.py    # Basic search examples
-    └── rag_query.py       # Full RAG with LLM examples
-```
-
-## 🔍 Search Capabilities
-
-### 1. Semantic Search
-Find products using natural language:
-- "comfortable walking shoes" → Finds shoes with comfort-related features
-- "waterproof backpack" → Finds bags with water resistance
-- "gift for tech lover" → Finds technology products
-
-### 2. Filtered Search
-Combine semantic search with metadata filters:
-- Search by vendor
-- Search by product type
-- Search by availability
-
-### 3. Price Range Search
-Find products within a specific price range while maintaining semantic relevance.
-
-### 4. Similar Products
-Given a product, find similar items based on semantic similarity.
-
-## 🛠️ API Endpoints
-
-### `GET /`
-API information and available endpoints
-
-### `GET /health`
-Health check and database statistics
-
-### `GET|POST /search`
-Search for products
-- **Parameters**: `q` (query), `top_k`, `min_score`, `vendor`, `product_type`
-
-### `GET /stats`
-Vector database statistics
-
-### `POST /index`
-Re-index products from Shopify
-- **Body**: `{"force_refresh": true}` to fetch fresh data
-
-## ⚙️ Configuration Options
-
-Edit `.env` to customize:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SHOPIFY_SHOP_URL` | Your Shopify store URL | Required |
-| `SHOPIFY_ACCESS_TOKEN` | Admin API access token | Required |
-| `SHOPIFY_API_VERSION` | Shopify API version | 2025-10 |
-| `EMBEDDING_MODEL` | Sentence transformer model | all-MiniLM-L6-v2 |
-| `CHROMA_PERSIST_DIRECTORY` | Vector DB storage path | ./chroma_db |
-| `COLLECTION_NAME` | ChromaDB collection name | shopify_products |
-| `API_HOST` | API server host | 0.0.0.0 |
-| `API_PORT` | API server port | 8000 |
-| `OPENAI_API_KEY` | OpenAI API key (optional) | - |
-
-## 🧪 Testing
-
-Run the example scripts to verify everything works:
-
-```bash
-# Basic search examples
-python examples/basic_search.py
-
-# RAG query examples (works with or without OpenAI)
-python examples/rag_query.py
-
-# Test API
-python api.py  # In one terminal
-curl "http://localhost:8000/search?q=test"  # In another
-```
-
-## 📊 Performance
-
-- **Embedding Model**: `all-MiniLM-L6-v2` (384 dimensions)
-- **Indexing Speed**: ~100-200 products/second
-- **Search Speed**: <100ms for typical queries
-- **Storage**: ~1KB per product (embeddings + metadata)
-
-## 🔐 Security Notes
-
-- Never commit `.env` file to version control
-- Keep your Shopify access token secure
-- Use environment variables in production
-- Consider rate limiting for the API in production
-
-## 🚀 Deployment
-
-For production deployment:
-
-1. **Set environment variables** instead of using `.env` file
-2. **Use a process manager** like `supervisor` or `systemd`
-3. **Add authentication** to API endpoints
-4. **Enable CORS properly** in `api.py`
-5. **Use a reverse proxy** like Nginx
-6. **Monitor vector DB size** and set up backups
-
-Example systemd service:
-
+### 2. Configure Environment
+Create a `.env` file in the root:
 ```ini
-[Unit]
-Description=Shopify RAG API
-After=network.target
-
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/path/to/shopify_rag
-Environment="SHOPIFY_ACCESS_TOKEN=xxx"
-ExecStart=/path/to/venv/bin/python api.py
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
+FLASK_APP=assistant_api.py
+FLASK_ENV=development
+OLLAMA_HOST=http://localhost:11434
+ELEVENLABS_API_KEY=your_key_here
+ELEVENLABS_VOICE_ID=your_voice_id
 ```
 
-## 🤝 Contributing
+### 3. Install Frontend
+```bash
+cd frontend_react
+npm install
+```
 
-Feel free to submit issues and enhancement requests!
+### 4. Run the System
+**Terminal 1 (Backend)**:
+```bash
+source venv/bin/activate
+python assistant_api.py
+# Runs on http://localhost:8001
+```
 
-## 📄 License
+**Terminal 2 (Frontend)**:
+```bash
+cd frontend_react
+npm run dev
+# Runs on http://localhost:5174
+```
 
-This project is provided as-is for educational and commercial use.
+## 📖 Usage Guide
 
-## 🙋 Support
+1. **Open the App**: Navigate to `http://localhost:5174`.
+2. **Click "Start Assistant"**: Grant microphone permissions.
+3. **Speak Naturally**:
+   - *"I need a camera for vlogging."* (AI will ask clarifying questions)
+   - *"Do you have the Sony A7?"* (AI will search and confirm)
+   - *"Write me a python script"* (AI will refuse - strict constraint)
 
-For issues or questions:
-1. Check the examples in `examples/`
-2. Review API documentation at `http://localhost:8000/docs`
-3. Verify your `.env` configuration
+## 📂 Project Structure
 
-## 🎯 Future Enhancements
+```
+├── assistant_api.py        # Main Flask Application & System Prompt
+├── api.py                  # Initial RAG API (Legacy/Reference)
+├── data_processor.py       # ETL script for Shopify products -> ChromaDB
+├── hybrid_search.py        # Search Logic (Semantic + Keyword)
+├── frontend_react/         # React Application Source
+└── requirements.txt        # Python Dependencies
+```
 
-- [ ] Hybrid search (semantic + keyword)
-- [ ] Multi-language support
-- [ ] Product image search
-- [ ] Analytics and search insights
-- [ ] Caching layer for common queries
-- [ ] Batch indexing optimization
-- [ ] Web UI for search
-
----
-
-**Built with:** Python, Sentence Transformers, ChromaDB, FastAPI
+## 🛡️ License
+MIT
