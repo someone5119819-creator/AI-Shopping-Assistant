@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Shopping Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-color: #000000;
+            --surface-color: #1c1c1e;
+            --primary-accent: #ffffff;
+            --secondary-accent: #a1a1aa;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --orb-color-1: #3b82f6;
+            /* Blue */
+            --orb-color-2: #8b5cf6;
+            /* Purple */
+            --orb-color-3: #ffffff;
+            /* White center */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+            background: var(--bg-color);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: var(--text-primary);
+        }
+
+        .assistant-container {
+            width: 100%;
+            height: 100%;
+            max-width: 600px;
+            background: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 10;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+        }
+
+        .header-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 24px;
+            opacity: 0.7;
+            transition: all 0.2s;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .header-btn:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Visualizer Area */
+        .visualizer-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            min-height: 300px;
+        }
+
+        canvas#visualizer {
+            width: 300px;
+            height: 300px;
+            filter: blur(2px);
+        }
+
+        .status-text {
+            margin-top: 20px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            height: 20px;
+        }
+
+        .status-text.visible {
+            opacity: 1;
+        }
+
+        /* Messages / Content Overlay */
+        .content-overlay {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+            display: none;
+            /* Hidden by default, shown when there are products/messages */
+        }
+
+        .content-overlay.active {
+            display: flex;
+        }
+
+        .content-overlay::-webkit-scrollbar {
+            display: none;
+        }
+
+        .message {
+            background: rgba(28, 28, 30, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 16px 20px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            animation: fadeIn 0.4s ease;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .message.assistant {
+            color: var(--text-primary);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Product Cards */
+        .products-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .product-card {
+            background: rgba(28, 28, 30, 0.9);
+            border-radius: 16px;
+            padding: 12px;
+            display: flex;
+            gap: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s;
+        }
+
+        .product-card:hover {
+            transform: scale(1.02);
+            background: rgba(44, 44, 46, 0.9);
+        }
+
+        .product-image {
+            width: 70px;
+            height: 70px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #2c2c2e;
+        }
+
+        .product-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .product-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .product-price {
+            font-size: 14px;
+            color: #a1a1aa;
+        }
+
+        /* Controls */
+        .controls {
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            z-index: 10;
+        }
+
+        .control-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .control-btn.secondary {
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+        }
+
+        .control-btn.end {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .control-btn.end:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .mic-wrapper {
+            position: relative;
+        }
+
+        .mic-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid white;
+            opacity: 0;
+            transform: scale(1);
+            pointer-events: none;
+        }
+
+        .control-btn.mic.listening {
+            background: white;
+            color: black;
+        }
+
+        /* Input Text Overlay */
+        .input-overlay {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            width: 90%;
+            max-width: 400px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .input-overlay.active {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: all;
+        }
+
+        .text-input {
+            width: 100%;
+            padding: 16px 20px;
+            background: rgba(28, 28, 30, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            color: white;
+            font-size: 16px;
+            outline: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="assistant-container">
+        <!-- Header -->
+        <div class="header">
+            <button class="header-btn" onclick="closeWindow()">✕</button>
+            <div class="header-title">Gemini Live</div>
+            <button class="header-btn">⋯</button>
+        </div>
+
+        <!-- Content (Hidden unless active) -->
+        <div class="content-overlay" id="contentOverlay">
+            <!-- Dynamic content goes here -->
+        </div>
+
+        <!-- Visualizer (The Orb) -->
+        <div class="visualizer-container">
+            <canvas id="visualizer"></canvas>
+            <div class="status-text" id="statusText">Listening...</div>
+        </div>
+
+        <!-- Text Input -->
+        <div class="input-overlay" id="inputOverlay">
+            <input type="text" class="text-input" id="textInput" placeholder="Message..."
+                onkeypress="handleKeyPress(event)">
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="control-btn secondary" onclick="toggleTextInput()">⌨️</button>
+
+            <div class="mic-wrapper">
+                <button class="control-btn mic" id="micBtn" onclick="toggleMic()">
+                    <div class="mic-icon">🎙️</div>
+                </button>
+                <div class="mic-ring"></div>
+            </div>
+
+            <button class="control-btn end control-btn secondary" onclick="endSession()">📞</button>
+        </div>
+    </div>
+
+    <script src="assistant.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,30 @@
+# HTTP Requests
+requests==2.31.0
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# Embeddings
+sentence-transformers==2.2.2
+
+# Vector Database
+chromadb==0.4.22
+
+# API Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+
+# Optional: LangChain for RAG
+langchain==0.1.4
+langchain-community==0.0.16
+langchain-openai==0.0.5
+
+# Utilities
+numpy==1.26.3
+tqdm==4.66.1
+
+# Keyword Search
+rank-bm25==0.2.2
+nltk==3.8.1
+scikit-learn==1.4.0

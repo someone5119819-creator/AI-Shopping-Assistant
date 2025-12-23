@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopify Product Search - Hybrid RAG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --light-gray: #f1f5f9;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .search-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 2rem;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .search-input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            padding-left: 3rem;
+            font-size: 1rem;
+            border: 2px solid var(--border);
+            border-radius: 0.75rem;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+        }
+
+        .search-btn {
+            padding: 1rem 2rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .search-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow);
+        }
+
+        .search-btn:active {
+            transform: translateY(0);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group {
+            background: var(--light-gray);
+            padding: 1rem;
+            border-radius: 0.75rem;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toggle {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: var(--gray);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .toggle.active {
+            background: var(--success);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+
+        .toggle.active .toggle-slider {
+            transform: translateX(24px);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: var(--border);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .slider-value {
+            min-width: 2.5rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .results-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .results-count {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .results-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .product-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            transition: all 0.2s;
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .product-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .product-image-container {
+            flex-shrink: 0;
+            width: 150px;
+            height: 150px;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            background: var(--light-gray);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+
+        .product-card:hover .product-image {
+            transform: scale(1.05);
+        }
+
+        .product-image-placeholder {
+            color: var(--gray);
+            font-size: 3rem;
+            opacity: 0.3;
+        }
+
+        .product-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .product-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark);
+            flex: 1;
+        }
+
+        .product-price {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-left: 1rem;
+        }
+
+        .product-meta {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .meta-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            background: var(--light-gray);
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            color: var(--gray);
+        }
+
+        .scores {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .score-item {
+            text-align: center;
+        }
+
+        .score-label {
+            font-size: 0.75rem;
+            color: var(--gray);
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .score-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .score-value.hybrid {
+            color: var(--primary);
+        }
+
+        .score-value.semantic {
+            color: var(--secondary);
+        }
+
+        .score-value.keyword {
+            color: var(--success);
+        }
+
+        .score-bar {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.25rem;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s;
+        }
+
+        .score-bar-fill.semantic {
+            background: var(--secondary);
+        }
+
+        .score-bar-fill.keyword {
+            background: var(--success);
+        }
+
+        .field-scores {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .field-score {
+            padding: 0.5rem;
+            background: var(--light-gray);
+            border-radius: 0.375rem;
+            text-align: center;
+            font-size: 0.75rem;
+        }
+
+        .field-score-label {
+            color: var(--gray);
+            margin-bottom: 0.25rem;
+        }
+
+        .field-score-value {
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--gray);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .error {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .search-container {
+                flex-direction: column;
+            }
+
+            .controls {
+                grid-template-columns: 1fr;
+            }
+
+            .product-card {
+                flex-direction: column;
+            }
+
+            .product-image-container {
+                width: 100%;
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Shopify Product Search</h1>
+            <p>Advanced Hybrid Search with Semantic AI + Keyword Matching</p>
+        </div>
+
+        <div class="search-card">
+            <div class="search-container">
+                <div class="search-input-wrapper">
+                    <svg class="search-icon" width="20" height="20" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input type="text" class="search-input" id="searchInput"
+                        placeholder="Search for products... (e.g., LED ring light, wireless headphones)"
+                        autocomplete="off" />
+                </div>
+                <button class="search-btn" id="searchBtn">Search</button>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label>Hybrid Search</label>
+                    <div class="toggle-container">
+                        <div class="toggle active" id="hybridToggle">
+                            <div class="toggle-slider"></div>
+                        </div>
+                        <span id="hybridStatus">Enabled</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Semantic Weight (<span id="semanticValue">0.5</span>)</label>
+                    <div class="slider-container">
+                        <input type="range" min="0" max="1" step="0.1" value="0.5" class="slider" id="semanticSlider" />
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Keyword Weight (<span id="keywordValue">0.5</span>)</label>
+                    <div class="slider-container">
+                        <input type="range" min="0" max="1" step="0.1" value="0.5" class="slider" id="keywordSlider" />
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Results Count</label>
+                    <input type="number" min="1" max="20" value="10" class="search-input" id="topK"
+                        style="padding: 0.5rem; font-size: 0.875rem;" />
+                </div>
+            </div>
+        </div>
+
+        <div id="resultsContainer"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        const elements = {
+            searchInput: document.getElementById('searchInput'),
+            searchBtn: document.getElementById('searchBtn'),
+            hybridToggle: document.getElementById('hybridToggle'),
+            hybridStatus: document.getElementById('hybridStatus'),
+            semanticSlider: document.getElementById('semanticSlider'),
+            keywordSlider: document.getElementById('keywordSlider'),
+            semanticValue: document.getElementById('semanticValue'),
+            keywordValue: document.getElementById('keywordValue'),
+            topK: document.getElementById('topK'),
+            resultsContainer: document.getElementById('resultsContainer')
+        };
+
+        // Toggle hybrid search
+        elements.hybridToggle.addEventListener('click', () => {
+            elements.hybridToggle.classList.toggle('active');
+            const isActive = elements.hybridToggle.classList.contains('active');
+            elements.hybridStatus.textContent = isActive ? 'Enabled' : 'Disabled';
+        });
+
+        // Update slider values
+        elements.semanticSlider.addEventListener('input', (e) => {
+            elements.semanticValue.textContent = e.target.value;
+        });
+
+        elements.keywordSlider.addEventListener('input', (e) => {
+            elements.keywordValue.textContent = e.target.value;
+        });
+
+        // Search on Enter key
+        elements.searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+
+        // Search button click
+        elements.searchBtn.addEventListener('click', performSearch);
+
+        async function performSearch() {
+            const query = elements.searchInput.value.trim();
+            if (!query) {
+                showError('Please enter a search query');
+                return;
+            }
+
+            const params = new URLSearchParams({
+                q: query,
+                top_k: elements.topK.value,
+                use_hybrid: elements.hybridToggle.classList.contains('active'),
+                semantic_weight: elements.semanticSlider.value,
+                keyword_weight: elements.keywordSlider.value
+            });
+
+            showLoading();
+            elements.searchBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/search?${params}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayResults(data, query);
+            } catch (error) {
+                showError(`Search failed: ${error.message}. Make sure the API server is running on port 8000.`);
+            } finally {
+                elements.searchBtn.disabled = false;
+            }
+        }
+
+        function showLoading() {
+            elements.resultsContainer.innerHTML = `
+                <div class="search-card loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 1rem;">Searching products...</p>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            elements.resultsContainer.innerHTML = `
+                <div class="search-card">
+                    <div class="error">
+                        <strong>Error:</strong> ${message}
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayResults(data, query) {
+            const isHybrid = elements.hybridToggle.classList.contains('active');
+
+            if (!data.results || data.results.length === 0) {
+                elements.resultsContainer.innerHTML = `
+                    <div class="search-card">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🔍</div>
+                            <h3>No products found</h3>
+                            <p>Try adjusting your search query or search settings</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const resultsHTML = `
+                <div class="search-card">
+                    <div class="results-header">
+                        <h2>Search Results</h2>
+                        <div class="results-count">
+                            Found ${data.count} products for "<strong>${query}</strong>"
+                        </div>
+                    </div>
+                    <div class="results-grid">
+                        ${data.results.map(result => renderProduct(result, isHybrid)).join('')}
+                    </div>
+                </div>
+            `;
+
+            elements.resultsContainer.innerHTML = resultsHTML;
+        }
+
+        function renderProduct(result, isHybrid) {
+            const meta = result.metadata || {};
+            const hybridScore = result.hybrid_score || 0;
+            const semanticScore = result.semantic_score || result.relevance_score || 0;
+            const keywordScore = result.keyword_score || 0;
+            const fieldScores = result.field_scores || {};
+            const imageUrl = meta.image_url || '';
+            const price = meta.price || 0;
+            const currencySymbol = '₹'; // Rupee symbol for Indian currency
+
+            return `
+                <div class="product-card">
+                    <div class="product-image-container">
+                        ${imageUrl ? `<img src="${imageUrl}" alt="${(meta.title || 'Product image').replace(/"/g, '&quot;')}" class="product-image" onerror="this.parentElement.innerHTML='<div class=&quot;product-image-placeholder&quot;>📦</div>';" />` : '<div class="product-image-placeholder">📦</div>'}
+                    </div>
+                    
+                    <div class="product-content">
+                        <div class="product-header">
+                            <div class="product-title">${meta.title || 'Untitled Product'}</div>
+                            <div class="product-price">${currencySymbol}${price.toFixed(2)}</div>
+                        </div>
+                        
+                        <div class="product-meta">
+                            ${meta.product_type ? `<span class="meta-badge">📦 ${meta.product_type}</span>` : ''}
+                            ${meta.vendor ? `<span class="meta-badge">🏷️ ${meta.vendor}</span>` : ''}
+                            ${meta.available ? '<span class="meta-badge">✅ Available</span>' : '<span class="meta-badge">❌ Out of Stock</span>'}
+                        </div>
+
+                        <div class="scores">
+                            ${isHybrid ? `
+                                <div class="score-item">
+                                    <div class="score-label">Hybrid Score</div>
+                                    <div class="score-value hybrid">${hybridScore.toFixed(3)}</div>
+                                    <div class="score-bar">
+                                        <div class="score-bar-fill" style="width: ${Math.min(hybridScore * 50, 100)}%"></div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="score-item">
+                                <div class="score-label">Semantic</div>
+                                <div class="score-value semantic">${semanticScore.toFixed(3)}</div>
+                                <div class="score-bar">
+                                    <div class="score-bar-fill semantic" style="width: ${semanticScore * 100}%"></div>
+                                </div>
+                            </div>
+
+                            ${isHybrid ? `
+                                <div class="score-item">
+                                    <div class="score-label">Keyword</div>
+                                    <div class="score-value keyword">${keywordScore.toFixed(3)}</div>
+                                    <div class="score-bar">
+                                        <div class="score-bar-fill keyword" style="width: ${keywordScore * 100}%"></div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        ${isHybrid && Object.keys(fieldScores).length > 0 ? `
+                            <div class="field-scores">
+                                ${Object.entries(fieldScores)
+                        .filter(([_, score]) => score > 0)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([field, score]) => `
+                                        <div class="field-score">
+                                            <div class="field-score-label">${field}</div>
+                                            <div class="field-score-value">${score.toFixed(2)}</div>
+                                        </div>
+                                    `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show welcome message
+        elements.resultsContainer.innerHTML = `
+            <div class="search-card">
+                <div class="empty-state">
+                    <div class="empty-state-icon">👋</div>
+                    <h3>Welcome to Hybrid Product Search!</h3>
+                    <p>Enter a search query above to get started. Try searches like "LED ring light", "wireless headphones", or "camera tripod".</p>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; color: #64748b;">
+                        💡 Tip: Toggle hybrid search on/off to compare results, or adjust the semantic/keyword weights to fine-tune results!
+                    </p>
+                </div>
+            </div>
+        `;
+    </script>
+</body>
+
+</html>
