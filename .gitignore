@@ -1,34 +1,14 @@
-# Environment variables
-.env
 
 # Python
+venv/
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-venv/
-env/
-ENV/
-
-# Vector database
-chroma_db/
-
-# Data files
-product.json
-# *.json (Commented out to allow package.json etc)
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
 
 # Node
 node_modules/
 dist/
+
+# Env & DB
+.env
+chroma_db/
 
