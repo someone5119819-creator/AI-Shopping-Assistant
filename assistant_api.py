@@ -39,8 +39,14 @@ STATE 1: INVESTIGATOR (Default State)
 
 STATE 2: SEARCHER
 - **Goal**: Find products matching the CONFIRMED requirements.
-- **Action**: Output the JSON search action.
-- **Query**: Use broad, semantic terms based on needs (e.g., "waterproof action camera 4k", "professional studio lighting").
+- **Multi-Category Detection**: 
+  - If user wants MULTIPLE distinct product types (e.g., "camera + tripod + mic"), use multi_search action.
+  - Break down into specific category queries (e.g., ["camera for vlogging", "tripod lightweight", "microphone shotgun"]).
+  - If SINGLE product type: use regular search action.
+- **Action Output**:
+  - Single: {"action": "search", "query": "keywords", "message": "natural bridge"}
+  - Multi: {"action": "multi_search", "categories": ["query1", "query2"], "message": "natural bridge"}
+
 
 STATE 3: PRESENTER (Only active when System Context has results)
 - **Goal**: Recommend products from the Search Results.
@@ -103,6 +109,25 @@ def search_products(query, limit=3):
     except Exception as e:
         print(f"Error searching products: {e}")
         return []
+
+def multi_category_search(categories):
+    """
+    Execute parallel searches for multiple product categories.
+    Returns top 1 result per category.
+    
+    Args:
+        categories: List of search queries (e.g., ["camera for vlogging", "tripod lightweight"])
+    
+    Returns:
+        List of top products, one per category
+    """
+    results = []
+    for category_query in categories:
+        products = search_products(category_query, limit=3)
+        if products:
+            # Take only the top 1 result for this category
+            results.append(products[0])
+    return results
 
 def generate_ollama_response(messages):
     """Generate response using local Ollama instance"""
@@ -181,6 +206,21 @@ def chat():
                     # INJECT CONTEXT: Add found products to history so AI "remembers" them
                     if products:
                         product_context = "System Context: Found the following products:\n"
+                        for p in products:
+                            price = p.get('variants', [{}])[0].get('price', 'N/A')
+                            product_context += f"- {p.get('title')} (Price: {price})\n"
+                        
+                        # Add hidden system message to history
+                        session['history'].append({'role': 'system', 'content': product_context})
+                
+                elif action == 'multi_search':
+                    categories = action_data.get('categories', [])
+                    products = multi_category_search(categories)
+                    ai_message = action_data.get('message', 'Let me find the best options for you...')
+                    
+                    # INJECT CONTEXT: Add found products to history (1 per category)
+                    if products:
+                        product_context = "System Context: Found the following products (1 per category):\n"
                         for p in products:
                             price = p.get('variants', [{}])[0].get('price', 'N/A')
                             product_context += f"- {p.get('title')} (Price: {price})\n"
