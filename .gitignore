@@ -16,7 +16,7 @@ chroma_db/
 
 # Data files
 product.json
-*.json
+# *.json (Commented out to allow package.json etc)
 
 # IDE
 .vscode/
