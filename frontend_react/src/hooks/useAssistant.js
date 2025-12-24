@@ -252,4 +252,5 @@ export const useAssistant = () => {
         sendMessage
     };
 };
-```
+
+export { useAssistant };
