@@ -37,6 +37,21 @@ User Requirements:
 {requirements}
 
 Recommend 1-2 products (prefer 1 if perfect match exists) and explain why:"""
+
+    CROSS_SELL_PROMPT = """You are a helpful sales assistant suggesting accessories.
+
+CONTEXT:
+User just looked at: {main_product}
+We found these compatible accessories:
+{search_results}
+
+TASK:
+- Recommend 1-2 relevant accessories from the list above.
+- Explain why they are useful for {main_product}.
+- Example: "To go with your camera, I recommend [Accessory] because..."
+- Be concise.
+
+Suggest accessories:"""
     
     def __init__(self, ollama_generator):
         super().__init__(
@@ -81,11 +96,17 @@ Recommend 1-2 products (prefer 1 if perfect match exists) and explain why:"""
         # Format results for prompt
         results_text = self.format_search_results(products)
         
-        # Build prompt
-        prompt = self.PRESENTER_PROMPT.format(
-            search_results=results_text,
-            requirements=requirements
-        )
+        # Determine prompt based on context
+        if context.get('is_cross_sell'):
+            prompt = self.CROSS_SELL_PROMPT.format(
+                main_product=context.get('main_product', 'your item'),
+                search_results=results_text
+            )
+        else:
+            prompt = self.PRESENTER_PROMPT.format(
+                search_results=results_text,
+                requirements=requirements
+            )
         
         # Generate recommendation
         recommendation = self.ollama_generator([
@@ -93,12 +114,11 @@ Recommend 1-2 products (prefer 1 if perfect match exists) and explain why:"""
             {"role": "user", "content": requirements}
         ])
         
-        logger.info(f"[Presenter] Generated response: {recommendation[:200]}...")  # Log first 200 chars
+        logger.info(f"[Presenter] Generated response: {recommendation[:200]}...")
         self.log_action("PRESENTED", f"{len(products)} products available")
         
         # Let the LLM decide how many to recommend (return top 3 max from search results)
-        # The AI's text will indicate which ones it's actually recommending
         return {
             'response': recommendation,
-            'products': products[:3]  # Max 3 from search, but AI may recommend 1-2
+            'products': products[:3]
         }

@@ -29,7 +29,8 @@ class OrchestratorAgent(Agent):
         self.presenter = PresenterAgent(ollama_generator)
         
         # Conversation state
-        self.conversation_stage = "initial"  # initial, discovery, search, presentation
+        self.conversation_stage = "initial"  # initial, discovery, recommendation_given, accessories_given
+        self.last_recommended_product = None
     
     def is_casual_conversation(self, user_message: str) -> bool:
         """Detect if this is casual conversation, not a product request."""
@@ -158,6 +159,20 @@ class OrchestratorAgent(Agent):
         elif self.conversation_stage == "discovery":
             # User has answered discovery questions, now search
             return "searcher"
+
+        elif self.conversation_stage == "recommendation_given":
+            # If user agrees/likes it -> Cross sell
+            # Simple check for now: if not negative, assume interest
+            negative_keywords = ['no', 'bad', 'don\'t like', 'expensive', 'something else']
+            if not any(k in user_message for k in negative_keywords):
+                return "cross_sell"
+            else:
+                # User didn't like it, search for something else
+                return "searcher"
+        
+        elif self.conversation_stage == "accessories_given":
+             # User saw accessories -> Cart/Close
+             return "casual" # For now, will implement cart logic later or just let them talk
         
         else:
             # Subsequent messages - check if new product request
@@ -190,54 +205,30 @@ class OrchestratorAgent(Agent):
             }
         
         # STEP 2: Determine next agent
+        Main orchestration logic.
+        """
+        user_message = context.get('user_message', '')
+        self.log_action("PROCESSING", f"Stage: {self.conversation_stage}")
+        
+        # 1. Determine next agent
         next_agent_name = self.determine_next_agent(context)
+        self.log_action("ROUTING", f"Next agent: {next_agent_name}")
         
-        # STEP 3: Route to appropriate agent
+        # 2. Execute agent
         if next_agent_name == "casual":
-            # Handle casual conversation without product search
-            casual_responses = [
-                "I'm doing great, thanks for asking! I'm here to help you find camera and audio equipment. What are you looking for today?",
-                "Hello! I specialize in camera and audio gear. How can I help you today?",
-                "Hi there! I'm your equipment specialist. Are you looking for something specific?"
-            ]
-            import random
-            self.conversation_stage = "initial"
+            # Handle casually
             return {
-                'response': random.choice(casual_responses),
-                'products': []
+                'response': self.ollama_generator([
+                    {"role": "system", "content": "You are a helpful shopping assistant. Be warm and professional. If the user greets you, greet them back and ask how you can help with camera/audio gear."},
+                    {"role": "user", "content": user_message}
+                ])
             }
-        
+            
         elif next_agent_name == "investigator":
-            # Discovery phase
-            investigator_result = self.investigator.process(context)
             self.conversation_stage = "discovery"
-            return {
-                'response': investigator_result.get('response'),
-                'products': []
-            }
-        
+            return self.agents['investigator'].process(context)
+            
         elif next_agent_name == "searcher":
-            # Search phase
-            searcher_result = self.searcher.process(context)
-            products = searcher_result.get('search_results', [])
-            
-            # STEP 4: Present results
-            presenter_context = {
-                'search_results': products,
-                'requirements': context.get('user_message'),
-                'user_message': context.get('user_message')
-            }
-            presenter_result = self.presenter.process(presenter_context)
-            
-            self.conversation_stage = "presentation"
-            return {
-                'response': presenter_result.get('response'),
-                'products': presenter_result.get('products', [])
-            }
-        
-        else:
-            # Fallback
-            return {
                 'response': "I'm here to help you find camera and audio equipment. What are you looking for?",
                 'products': []
             }
