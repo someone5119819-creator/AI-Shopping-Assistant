@@ -188,6 +188,7 @@ def chat():
         # Check if AI wants to search for products or place order
         products = None
         order_status = None
+        messages_already_added = False  # Flag to prevent duplicate history entries
         
         if '{"action":' in ai_message and '}' in ai_message:
             try:
