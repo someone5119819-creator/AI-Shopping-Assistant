@@ -247,16 +247,9 @@ def chat():
         response_data = {
             'message': ai_message,
             'session_id': session_id,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'products': products if products else []
         }
-        
-        if products:
-            response_data['products'] = products
-            
-        if order_status:
-            response_data['order'] = order_status
-            # If order successful, append the success message to the response text so user hears/sees it
-            response_data['message'] = order_status['message']
         
         return jsonify(response_data)
         
