@@ -28,6 +28,11 @@ CORS(app)
 # Store conversation sessions (in-memory for MVP - use Redis in production)
 sessions = {}
 
+# Initialize Multi-Agent System
+from agents.orchestrator import OrchestratorAgent
+
+# Note: Orchestrator will be initialized per session to maintain state
+
 # System prompt for shopping assistant  
 SYSTEM_PROMPT = """ROLE: Specialized Camera & Audio Equipment Consultant
 SPECIALTY: High-end video/photography gear.
@@ -201,139 +206,42 @@ def chat():
         if not user_message:
             return jsonify({'error': 'Message is required'}), 400
         
-        # Initialize or get session
+        # Get or create session
         if session_id not in sessions:
             sessions[session_id] = {
+                'id': session_id,
                 'history': [],
-                'created_at': datetime.now().isoformat()
+                'created_at': datetime.now().isoformat(),
+                'orchestrator': None  # Will initialize on first use
             }
         
         session = sessions[session_id]
         
-        # Build conversation context for Ollama
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        # Initialize orchestrator if not exists
+        if not session['orchestrator']:
+            session['orchestrator'] = OrchestratorAgent(
+                ollama_generator=generate_ollama_response,
+                search_function=search_products,
+                multi_search_function=multi_category_search
+            )
         
-        # Add history
-        for msg in session['history'][-10:]:  # Keep last 10 messages for better context
-            messages.append({"role": msg['role'], "content": msg['content']})
-            
-        # Add current user message
-        messages.append({"role": "user", "content": user_message})
+        orchestrator = session['orchestrator']
         
-        # Generate AI response
-        ai_message = generate_ollama_response(messages)
+        # Build context for orchestrator
+        context = {
+            'user_message': user_message,
+            'history': session['history']
+        }
         
-        # Check if AI wants to search for products or place order
-        products = None
-        order_status = None
-        messages_already_added = False  # Flag to prevent duplicate history entries
+        # Process through multi-agent system
+        result = orchestrator.process(context)
         
-        if '{"action":' in ai_message and '}' in ai_message:
-            try:
-                # Extract JSON from response
-                start = ai_message.find('{')
-                end = ai_message.rfind('}') + 1
-                action_data = json.loads(ai_message[start:end])
-                
-                action = action_data.get('action')
-                
-                if action == 'search':
-                    search_query = action_data.get('query', user_message)
-                    products = search_products(search_query)
-                    
-                    # INJECT CONTEXT: Add found products to history so AI "remembers" them
-                    if products:
-                        product_context = "System Context: Found the following products:\n"
-                        for p in products:
-                            price = p.get('variants', [{}])[0].get('price', 'N/A')
-                            product_context += f"- {p.get('title')} (Price: {price})\n"
-                        
-                        # Add hidden system message to history
-                        session['history'].append({'role': 'system', 'content': product_context})
-                        
-                        # IMMEDIATELY generate AI response with reasoning
-                        session['history'].append({'role': 'user', 'content': user_message})
-                        ai_message = generate_ollama_response(session['history'])
-                        
-                        # Skip adding messages again after this block (flag)
-                        messages_already_added = True
-                    else:
-                        ai_message = "I don't have any products matching that description in stock."
-                
-                elif action == 'multi_search':
-                    categories = action_data.get('categories', [])
-                    products = multi_category_search(categories)
-                    
-                    # INJECT CONTEXT: Add found products to history (1 per category)
-                    if products:
-                        product_context = "System Context: Found the following products (1 per category):\n"
-                        for p in products:
-                            price = p.get('variants', [{}])[0].get('price', 'N/A')
-                            product_context += f"- {p.get('title')} (Price: {price})\n"
-                        
-                        # Add hidden system message to history
-                        session['history'].append({'role': 'system', 'content': product_context})
-                        
-                        # IMMEDIATELY generate AI response with reasoning
-                        session['history'].append({'role': 'user', 'content': user_message})
-                        ai_message = generate_ollama_response(session['history'])
-                        
-                        # Skip adding messages again after this block (flag)
-                        messages_already_added = True
-                    else:
-                        ai_message = "I couldn't find products for all those categories."
-                    
-                    
-                elif action == 'add_to_cart':
-                    product_name = action_data.get('product', '')
-                    if product_name:
-                        session['cart'].append({'name': product_name, 'quantity': 1})
-                        ai_message = action_data.get('message', f'Added {product_name} to your cart!')
-                    
-                elif action == 'remove_from_cart':
-                    product_name = action_data.get('product', '')
-                    session['cart'] = [item for item in session['cart'] if item['name'] != product_name]
-                    ai_message = action_data.get('message', f'Removed {product_name} from cart.')
-                    
-                elif action == 'view_cart':
-                    if session['cart']:
-                        cart_items = [item['name'] for item in session['cart']]
-                        ai_message = f"Your cart has: {', '.join(cart_items)}"
-                    else:
-                        ai_message = "Your cart is empty."
-                    
-                elif action == 'place_order':
-                    if session['cart']:
-                        items = [item['name'] for item in session['cart']]
-                        order_status = {
-                            'status': 'success',
-                            'order_id': f'ORD-{int(datetime.now().timestamp())}',
-                            'items': items,
-                            'message': f"Order placed successfully! You will receive a confirmation email shortly."
-                        }
-                        session['cart'] = []  # Clear cart
-                        ai_message = order_status['message']
-                    else:
-                        ai_message = "Your cart is empty. Add some products first!"
-                    
-                elif action == 'order':
-                    items = action_data.get('items', [])
-                    # Simulate order placement
-                    order_status = {
-                        'status': 'success',
-                        'order_id': f'ORD-{int(datetime.now().timestamp())}',
-                        'items': items,
-                        'message': f"Order placed successfully for {', '.join(items)}! You will receive a confirmation email shortly."
-                    }
-                    ai_message = action_data.get('message', 'Placing your order now...')
-                    
-            except json.JSONDecodeError:
-                pass  # If JSON parsing fails, just continue with the text response
+        ai_message = result.get('response', 'I apologize, I encountered an issue.')
+        products = result.get('products', [])
         
-        # Add to session history (skip if already added in action handler)
-        if not messages_already_added:
-            session['history'].append({'role': 'user', 'content': user_message})
-            session['history'].append({'role': 'assistant', 'content': ai_message})
+        # Add to session history
+        session['history'].append({'role': 'user', 'content': user_message})
+        session['history'].append({'role': 'assistant', 'content': ai_message})
         
         # Prepare response
         response_data = {
