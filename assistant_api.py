@@ -129,7 +129,18 @@ def search_products(query, limit=3):
             timeout=10
         )
         if response.status_code == 200:
-            return response.json().get('results', [])
+            results = response.json().get('results', [])
+            # Filter low-relevance results (garbage filter)
+            # Valid matches usually > 0.15. Absolute garbage is often < 0.1
+            high_quality_results = [
+                r for r in results 
+                if r.get('hybrid_score', 0) > 0.1
+            ]
+            
+            if len(high_quality_results) < len(results):
+                logger.info(f"Filtered {len(results) - len(high_quality_results)} low-quality results")
+                
+            return high_quality_results
         else:
             logger.error(f"RAG API returned status {response.status_code}: {response.text}")
         return []

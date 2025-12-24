@@ -66,9 +66,10 @@ class SearcherAgent(Agent):
         requirements_lower = requirements.lower()
         
         # Priority: Extract primary product type
-        if 'action camera' in requirements_lower or ('action' in requirements_lower and 'camera' in requirements_lower):
+        # Handle 'camera' and common typos
+        if any(w in requirements_lower for w in ['action camera', 'action cam']):
             return "action camera"
-        elif 'camera' in requirements_lower:
+        elif any(w in requirements_lower for w in ['camera', 'camers', 'camer', 'camra']):
             return "camera"
         elif 'microphone' in requirements_lower or 'mic' in requirements_lower:
             return "microphone"
