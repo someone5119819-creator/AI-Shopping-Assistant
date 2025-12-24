@@ -106,6 +106,4 @@ const OrbVisualizer = ({ isListening, isSpeaking, isThinking, analyser }) => {
             <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
         </Box>
     );
-};
-
-export default OrbVisualizer;
+});

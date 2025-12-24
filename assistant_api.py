@@ -13,6 +13,14 @@ from datetime import datetime
 # Load environment variables
 load_dotenv()
 
+# Configure logging
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # Flask app
 app = Flask(__name__)
 CORS(app)
@@ -104,10 +112,10 @@ def search_products(query, limit=3):
         if response.status_code == 200:
             return response.json().get('results', [])
         else:
-            print(f"API returned status {response.status_code}: {response.text}")
+            logger.error(f"RAG API returned status {response.status_code}: {response.text}")
         return []
     except Exception as e:
-        print(f"Error searching products: {e}")
+        logger.error(f"Error searching products: {e}")
         return []
 
 def multi_category_search(categories):
@@ -121,13 +129,29 @@ def multi_category_search(categories):
     Returns:
         List of top products, one per category
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
     results = []
-    for category_query in categories:
-        products = search_products(category_query, limit=3)
-        if products:
-            # Take only the top 1 result for this category
-            results.append(products[0])
+    
+    # Optimize: Use parallel execution for multiple categories
+    with ThreadPoolExecutor(max_workers=min(len(categories), 5)) as executor:
+        # Submit all searches in parallel
+        future_to_category = {
+            executor.submit(search_products, category, 3): category 
+            for category in categories
+        }
+        
+        # Collect results as they complete
+        for future in as_completed(future_to_category):
+            try:
+                products = future.result()
+                if products:
+                    results.append(products[0])  # Take top 1 per category
+            except Exception as e:
+                logger.error(f"Error searching category: {e}")
+    
     return results
+
 
 def generate_ollama_response(messages):
     """Generate response using local Ollama instance"""
@@ -149,7 +173,7 @@ def generate_ollama_response(messages):
         else:
             return f"Error: Ollama returned status {response.status_code}"
     except Exception as e:
-        print(f"Ollama connection error: {e}")
+        logger.error(f"Ollama connection error: {e}")
         return "I'm having trouble connecting to my brain. Please make sure Ollama is running."
 
 @app.route('/api/assistant/chat', methods=['POST'])
@@ -315,7 +339,7 @@ def chat():
         return jsonify(response_data)
         
     except Exception as e:
-        print(f"Error in chat endpoint: {e}")
+        logger.error(f"Error in chat endpoint: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/assistant/session/new', methods=['POST'])
@@ -376,7 +400,7 @@ def tts():
             return jsonify({'error': f"ElevenLabs API error: {response.text}"}), response.status_code
             
     except Exception as e:
-        print(f"Error in TTS endpoint: {e}")
+        logger.error(f"Error in TTS endpoint: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/assistant/health', methods=['GET'])
