@@ -108,5 +108,4 @@ const OrbVisualizer = ({ isListening, isSpeaking, isThinking, analyser }) => {
     );
 };
 
-// Optimize: Prevent unnecessary re-renders
-export default React.memo(OrbVisualizer);
+export default OrbVisualizer;

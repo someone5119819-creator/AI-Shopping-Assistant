@@ -21,6 +21,8 @@ export const useAssistant = () => {
     const recognitionRef = useRef(null);
     const microphoneRef = useRef(null);
     const shouldListenRef = useRef(true); // Always listen by default
+    const isThinkingRef = useRef(false);
+    const isSpeakingRef = useRef(false);
 
     // Initialize Session
     useEffect(() => {
@@ -101,8 +103,8 @@ export const useAssistant = () => {
         };
 
         recognition.onend = () => {
-            // Auto-restart if we should be listening
-            if (shouldListenRef.current && !isThinking && !isSpeaking) {
+            // Auto-restart if we should be listening and NOT thinking/speaking
+            if (shouldListenRef.current && !isThinkingRef.current && !isSpeakingRef.current) {
                 try {
                     recognition.start();
                 } catch (e) {
@@ -143,8 +145,12 @@ export const useAssistant = () => {
     const sendMessage = async (text) => {
         addMessage('user', text);
         setIsThinking(true);
+        isThinkingRef.current = true; // Sync Ref
         setStatus('Thinking...');
         setLiveUserText(''); // Clear live text
+
+        // STOP MIC explicitly
+        if (recognitionRef.current) recognitionRef.current.stop();
 
         try {
             const res = await fetch(`${API_BASE}/chat`, {
@@ -155,34 +161,31 @@ export const useAssistant = () => {
             const data = await res.json();
 
             setIsThinking(false);
+            isThinkingRef.current = false; // Sync Ref
             handleResponse(data);
         } catch (err) {
             setIsThinking(false);
+            isThinkingRef.current = false; // Sync Ref
             setStatus('Error');
+            // Restart mic on error
+            if (shouldListenRef.current && recognitionRef.current) recognitionRef.current.start();
         }
     };
 
-    const handleResponse = async (data) => {
-        const msg = data.message;
-
-        // CRITICAL: Always display the AI's text explanation
-        setLiveAiText(msg);
-
-        // Handle products if present
+    const handleResponse = (data) => {
         if (data.products && data.products.length > 0) {
             setProducts(data.products);
             setStatus('Products Found');
-            addMessage('assistant', msg); // Show AI reasoning in chat
+            setLiveAiText(data.message);
+            speak(data.message);
+            addMessage('assistant', data.message);
         } else {
             setProducts([]);
             setStatus('Speaking...');
-            addMessage('assistant', msg);
+            setLiveAiText(data.message);
+            speak(data.message);
+            addMessage('assistant', data.message);
         }
-
-        setIsThinking(false);
-
-        // Play TTS for the message
-        speak(msg);
     };
 
     const addMessage = (role, text) => {
@@ -209,6 +212,8 @@ export const useAssistant = () => {
 
                 audio.onplay = () => {
                     setIsSpeaking(true);
+                    isSpeakingRef.current = true; // Sync Ref
+                    setStatus('Speaking...');
 
                     // Connect to analyser
                     const ctx = audioContextRef.current;
@@ -219,21 +224,18 @@ export const useAssistant = () => {
 
                 audio.onended = () => {
                     setIsSpeaking(false);
+                    isSpeakingRef.current = false; // Sync Ref
                     setLiveAiText(''); // Clear AI text
                     setStatus('Listening...');
-
-                    // Auto-resume listening
+                    // Resume listening
                     if (shouldListenRef.current && recognitionRef.current) {
-                        recognitionRef.current.start();
+                        try { recognitionRef.current.start(); } catch (e) { }
                     }
                 };
 
                 audio.play();
             })
-            .catch(err => {
-                console.error('TTS error:', err);
-                setIsSpeaking(false);
-            });
+            .catch(err => console.error("TTS Error", err));
     };
 
     return {
