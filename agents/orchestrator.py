@@ -62,6 +62,12 @@ class OrchestratorAgent(Agent):
         """
         Determine which agent should handle the request.
         
+        CRITICAL FLOW:
+        1. Casual conversation → "casual" response
+        2. Vague product request (initial) → Investigator (ask questions)
+        3. After discovery → Searcher (with gathered requirements)
+        4. Detailed product request → Searcher (skip discovery)
+        
         Args:
             context: Conversation context and user message
             
@@ -77,28 +83,38 @@ class OrchestratorAgent(Agent):
         # Check if this is clearly a product request
         is_product_req = self.is_product_request(user_message)
         
-        # Check if requirements are clear
-        needs_keywords = ['for', 'because', 'to', 'budget', 'outdoor', 'indoor', 'vlog', 'youtube']
-        has_clear_needs = any(keyword in user_message for keyword in needs_keywords)
+        # Determine if request has DETAILED requirements
+        detail_keywords = [
+            'budget', 'price', 'under', 'around',  # Budget specified
+            'outdoor', 'indoor', 'travel', 'studio',  # Environment specified
+            'beginner', 'professional', 'advanced',  # Skill level
+            'youtube', 'vlog', 'stream', 'podcast',  # Specific use case
+            '4k', '1080p', 'resolution'  # Technical specs
+        ]
+        has_detailed_needs = any(keyword in user_message for keyword in detail_keywords)
+        is_very_detailed = len(user_message.split()) > 15  # Long, descriptive request
         
-        # Decision logic
+        # Decision logic based on conversation stage
         if self.conversation_stage == "initial":
-            if is_product_req and (has_clear_needs or len(user_message.split()) > 10):
-                # Clear product request with context, go to search
-                return "searcher"
-            elif is_product_req:
-                # Product request but vague, ask questions
-                return "investigator"
-            else:
-                # Not a product request, casual response
+            if not is_product_req:
+                # Not a product request
                 return "casual"
+            elif has_detailed_needs or is_very_detailed:
+                # Detailed request with clear requirements, can search directly
+                self.log_action("SKIP_DISCOVERY", "Detailed requirements provided")
+                return "searcher"
+            else:
+                # Product request but VAGUE - need discovery
+                # Example: "I need a camera" → Ask questions!
+                self.log_action("NEEDS_DISCOVERY", "Vague product request")
+                return "investigator"
         
         elif self.conversation_stage == "discovery":
-            # User answered questions, now search
+            # User has answered discovery questions, now search
             return "searcher"
         
         else:
-            # Default based on whether it's a product request
+            # Subsequent messages - check if new product request
             return "searcher" if is_product_req else "casual"
     
     def process(self, context: Dict) -> Dict:
