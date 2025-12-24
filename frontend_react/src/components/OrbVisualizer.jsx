@@ -106,4 +106,7 @@ const OrbVisualizer = ({ isListening, isSpeaking, isThinking, analyser }) => {
             <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
         </Box>
     );
-});
+};
+
+// Optimize: Prevent unnecessary re-renders
+export default React.memo(OrbVisualizer);
