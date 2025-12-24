@@ -31,6 +31,33 @@ class OrchestratorAgent(Agent):
         # Conversation state
         self.conversation_stage = "initial"  # initial, discovery, search, presentation
     
+    def is_casual_conversation(self, user_message: str) -> bool:
+        """Detect if this is casual conversation, not a product request."""
+        casual_patterns = [
+            'hello', 'hi', 'hey', 'how are you', 'whats up', "what's up",
+            'good morning', 'good afternoon', 'good evening',
+            'thanks', 'thank you', 'bye', 'goodbye',
+            'how do you do', 'nice to meet you'
+        ]
+        message_lower = user_message.lower().strip()
+        
+        # Check if message is short greeting/casual
+        if len(message_lower.split()) <= 5:
+            for pattern in casual_patterns:
+                if pattern in message_lower:
+                    return True
+        return False
+    
+    def is_product_request(self, user_message: str) -> bool:
+        """Detect if this is a genuine product request."""
+        product_keywords = [
+            'camera', 'mic', 'microphone', 'lens', 'tripod', 'lighting', 'light',
+            'audio', 'video', 'gimbal', 'stabilizer', 'need', 'want', 'looking for',
+            'recommend', 'buy', 'purchase', 'get', 'find', 'show me'
+        ]
+        message_lower = user_message.lower()
+        return any(keyword in message_lower for keyword in product_keywords)
+    
     def determine_next_agent(self, context: Dict) -> str:
         """
         Determine which agent should handle the request.
@@ -43,26 +70,36 @@ class OrchestratorAgent(Agent):
         """
         user_message = context.get('user_message', '').lower()
         
+        # CRITICAL: Detect casual conversation first
+        if self.is_casual_conversation(user_message):
+            return "casual"  # Special case - handle in orchestrator
+        
+        # Check if this is clearly a product request
+        is_product_req = self.is_product_request(user_message)
+        
         # Check if requirements are clear
-        needs_keywords = ['for', 'because', 'to', 'budget', 'outdoor', 'indoor']
+        needs_keywords = ['for', 'because', 'to', 'budget', 'outdoor', 'indoor', 'vlog', 'youtube']
         has_clear_needs = any(keyword in user_message for keyword in needs_keywords)
         
         # Decision logic
         if self.conversation_stage == "initial":
-            if has_clear_needs or len(user_message.split()) > 10:
-                # Requirements seem clear, go to search
+            if is_product_req and (has_clear_needs or len(user_message.split()) > 10):
+                # Clear product request with context, go to search
                 return "searcher"
-            else:
-                # Need more info, ask questions
+            elif is_product_req:
+                # Product request but vague, ask questions
                 return "investigator"
+            else:
+                # Not a product request, casual response
+                return "casual"
         
         elif self.conversation_stage == "discovery":
             # User answered questions, now search
             return "searcher"
         
         else:
-            # Default to investigator for broad requests
-            return "investigator"
+            # Default based on whether it's a product request
+            return "searcher" if is_product_req else "casual"
     
     def process(self, context: Dict) -> Dict:
         """
@@ -93,7 +130,21 @@ class OrchestratorAgent(Agent):
         next_agent_name = self.determine_next_agent(context)
         
         # STEP 3: Route to appropriate agent
-        if next_agent_name == "investigator":
+        if next_agent_name == "casual":
+            # Handle casual conversation without product search
+            casual_responses = [
+                "I'm doing great, thanks for asking! I'm here to help you find camera and audio equipment. What are you looking for today?",
+                "Hello! I specialize in camera and audio gear. How can I help you today?",
+                "Hi there! I'm your equipment specialist. Are you looking for something specific?"
+            ]
+            import random
+            self.conversation_stage = "initial"
+            return {
+                'response': random.choice(casual_responses),
+                'products': []
+            }
+        
+        elif next_agent_name == "investigator":
             # Discovery phase
             investigator_result = self.investigator.process(context)
             self.conversation_stage = "discovery"
