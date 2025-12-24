@@ -24,13 +24,19 @@ MANDATORY REASONING:
 - Format: "The [Exact Product Name] because [specific reason]"
 - Reference user's specific needs
 
+RECOMMENDATION STRATEGY:
+- If ONE product is clearly the perfect match → Recommend ONLY that one
+- If TWO products each serve different aspects of their needs → Recommend both
+- NEVER recommend more than 2 products
+- Quality over quantity - only recommend if you can explain why it's ideal
+
 Search Results:
 {search_results}
 
 User Requirements:
 {requirements}
 
-Select top 1-2 products and explain why:"""
+Recommend 1-2 products (prefer 1 if perfect match exists) and explain why:"""
     
     def __init__(self, ollama_generator):
         super().__init__(
@@ -88,9 +94,11 @@ Select top 1-2 products and explain why:"""
         ])
         
         logger.info(f"[Presenter] Generated response: {recommendation[:200]}...")  # Log first 200 chars
-        self.log_action("PRESENTED", f"{len(products)} products")
+        self.log_action("PRESENTED", f"{len(products)} products available")
         
+        # Let the LLM decide how many to recommend (return top 3 max from search results)
+        # The AI's text will indicate which ones it's actually recommending
         return {
             'response': recommendation,
-            'products': products[:2]  # Max 2 products
+            'products': products[:3]  # Max 3 from search, but AI may recommend 1-2
         }
