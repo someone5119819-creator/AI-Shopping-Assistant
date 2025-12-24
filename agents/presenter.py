@@ -87,6 +87,7 @@ Select top 1-2 products and explain why:"""
             {"role": "user", "content": requirements}
         ])
         
+        logger.info(f"[Presenter] Generated response: {recommendation[:200]}...")  # Log first 200 chars
         self.log_action("PRESENTED", f"{len(products)} products")
         
         return {

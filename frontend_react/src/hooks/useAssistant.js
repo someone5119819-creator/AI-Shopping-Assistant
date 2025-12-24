@@ -178,68 +178,64 @@ export const useAssistant = () => {
             addMessage('assistant', data.message);
         }
     };
+    setProducts([]); // Clear products if none
+    addMessage('assistant', msg); // Add message for general response
+}
 
-    const addMessage = (role, text) => {
-        setMessages(prev => [...prev, { role, text }]);
-    };
+setIsThinking(false);
 
-    // TTS
-    const speak = (text) => {
-        if (!text) return;
+// Play TTS for the message
+try {
+    const ttsRes = await fetch('http://localhost:8001/api/assistant/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: msg })
+    });
 
-        // Pause listening while speaking to avoid echo
-        if (recognitionRef.current) recognitionRef.current.stop();
+    if (ttsRes.ok) {
+        const audioBlob = await ttsRes.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.crossOrigin = "anonymous"; // Ensure cross-origin for analyser
 
-        fetch(`${API_BASE}/tts`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text })
-        })
-            .then(res => res.blob())
-            .then(blob => {
-                const url = URL.createObjectURL(blob);
-                const audio = new Audio(url);
-                audio.crossOrigin = "anonymous";
+        audio.onplay = () => {
+            setIsSpeaking(true);
+            setStatus('Speaking...');
+            // Connect to analyser
+            const ctx = audioContextRef.current;
+            const source = ctx.createMediaElementSource(audio);
+            source.connect(analyserRef.current);
+            source.connect(ctx.destination);
+        };
 
-                audio.onplay = () => {
-                    setIsSpeaking(true);
-                    setStatus('Speaking...');
+        audio.onended = () => {
+            setIsSpeaking(false);
+            setLiveAiText(''); // Clear AI text
+            setStatus('Listening...');
+            // Resume listening
+            if (shouldListenRef.current && recognitionRef.current) {
+                try { recognitionRef.current.start(); } catch (e) { }
+            }
+        };
 
-                    // Connect to analyser
-                    const ctx = audioContextRef.current;
-                    const source = ctx.createMediaElementSource(audio);
-                    source.connect(analyserRef.current);
-                    source.connect(ctx.destination);
-                };
+        audio.play();
+    })
+            .catch (err => console.error("TTS Error", err));
+};
 
-                audio.onended = () => {
-                    setIsSpeaking(false);
-                    setLiveAiText(''); // Clear AI text
-                    setStatus('Listening...');
-                    // Resume listening
-                    if (shouldListenRef.current && recognitionRef.current) {
-                        try { recognitionRef.current.start(); } catch (e) { }
-                    }
-                };
-
-                audio.play();
-            })
-            .catch(err => console.error("TTS Error", err));
-    };
-
-    return {
-        sessionId,
-        messages,
-        products,
-        isListening,
-        isSpeaking,
-        isThinking,
-        status,
-        liveUserText,
-        liveAiText,
-        analyser: analyserRef.current,
-        startListening,
-        stopListening,
-        sendMessage
-    };
+return {
+    sessionId,
+    messages,
+    products,
+    isListening,
+    isSpeaking,
+    isThinking,
+    status,
+    liveUserText,
+    liveAiText,
+    analyser: analyserRef.current,
+    startListening,
+    stopListening,
+    sendMessage
+};
 };
