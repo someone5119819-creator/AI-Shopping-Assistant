@@ -52,6 +52,36 @@ class SearcherAgent(Agent):
         
         return categories if len(categories) > 1 else None
     
+    def extract_product_type(self, requirements: str) -> str:
+        """
+        Extract core product type from requirements.
+        Avoid overly specific queries that return accessories.
+        
+        Args:
+            requirements: User's stated needs
+            
+        Returns:
+            Clean product type query
+        """
+        requirements_lower = requirements.lower()
+        
+        # Priority: Extract primary product type
+        if 'action camera' in requirements_lower or ('action' in requirements_lower and 'camera' in requirements_lower):
+            return "action camera"
+        elif 'camera' in requirements_lower:
+            return "camera"
+        elif 'microphone' in requirements_lower or 'mic' in requirements_lower:
+            return "microphone"
+        elif 'lighting' in requirements_lower or 'light' in requirements_lower:
+            return "lighting"
+        elif 'tripod' in requirements_lower:
+            return "tripod"
+        elif 'gimbal' in requirements_lower or 'stabilizer' in requirements_lower:
+            return "gimbal"
+        else:
+            # Fallback to first few words
+            return ' '.join(requirements_lower.split()[:3])
+    
     def process(self, context: Dict) -> Dict:
         """
         Execute search based on requirements.
@@ -68,13 +98,15 @@ class SearcherAgent(Agent):
         categories = self.detect_categories(requirements)
         
         if categories:
-            # Multi-category search
-            self.log_action("MULTI_SEARCH", f"{len(categories)} categories")
-            products = self.multi_search_function(categories)
+            # Multi-category search - extract clean product types
+            clean_categories = [self.extract_product_type(cat) for cat in categories]
+            self.log_action("MULTI_SEARCH", f"{len(clean_categories)} categories")
+            products = self.multi_search_function(clean_categories)
         else:
-            # Single search
-            self.log_action("SINGLE_SEARCH", requirements[:50])
-            products = self.search_function(requirements, limit=3)
+            # Single search - use clean product type
+            clean_query = self.extract_product_type(requirements)
+            self.log_action("SINGLE_SEARCH", clean_query)
+            products = self.search_function(clean_query, limit=3)
         
         return {
             'search_results': products,
