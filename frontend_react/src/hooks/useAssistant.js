@@ -162,80 +162,94 @@ export const useAssistant = () => {
         }
     };
 
-    const handleResponse = (data) => {
+    const handleResponse = async (data) => {
+        const msg = data.message;
+
+        // CRITICAL: Always display the AI's text explanation
+        setLiveAiText(msg);
+
+        // Handle products if present
         if (data.products && data.products.length > 0) {
             setProducts(data.products);
             setStatus('Products Found');
-            const text = "I found these products for you.";
-            setLiveAiText(text);
-            speak(text);
-            addMessage('assistant', `Found ${data.products.length} products.`);
+            addMessage('assistant', msg); // Show AI reasoning in chat
         } else {
             setProducts([]);
             setStatus('Speaking...');
-            setLiveAiText(data.message);
-            speak(data.message);
-            addMessage('assistant', data.message);
+            addMessage('assistant', msg);
         }
+
+        setIsThinking(false);
+
+        // Play TTS for the message
+        speak(msg);
     };
-    setProducts([]); // Clear products if none
-    addMessage('assistant', msg); // Add message for general response
-}
 
-setIsThinking(false);
+    const addMessage = (role, text) => {
+        setMessages(prev => [...prev, { role, text }]);
+    };
 
-// Play TTS for the message
-try {
-    const ttsRes = await fetch('http://localhost:8001/api/assistant/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: msg })
-    });
+    // TTS
+    const speak = (text) => {
+        if (!text) return;
 
-    if (ttsRes.ok) {
-        const audioBlob = await ttsRes.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        audio.crossOrigin = "anonymous"; // Ensure cross-origin for analyser
+        // Pause listening while speaking to avoid echo
+        if (recognitionRef.current) recognitionRef.current.stop();
 
-        audio.onplay = () => {
-            setIsSpeaking(true);
-            setStatus('Speaking...');
-            // Connect to analyser
-            const ctx = audioContextRef.current;
-            const source = ctx.createMediaElementSource(audio);
-            source.connect(analyserRef.current);
-            source.connect(ctx.destination);
-        };
+        fetch(`${API_BASE}/tts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+        })
+            .then(res => res.blob())
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                audio.crossOrigin = "anonymous";
 
-        audio.onended = () => {
-            setIsSpeaking(false);
-            setLiveAiText(''); // Clear AI text
-            setStatus('Listening...');
-            // Resume listening
-            if (shouldListenRef.current && recognitionRef.current) {
-                try { recognitionRef.current.start(); } catch (e) { }
-            }
-        };
+                audio.onplay = () => {
+                    setIsSpeaking(true);
 
-        audio.play();
-    })
-            .catch (err => console.error("TTS Error", err));
+                    // Connect to analyser
+                    const ctx = audioContextRef.current;
+                    const source = ctx.createMediaElementSource(audio);
+                    source.connect(analyserRef.current);
+                    source.connect(ctx.destination);
+                };
+
+                audio.onended = () => {
+                    setIsSpeaking(false);
+                    setLiveAiText(''); // Clear AI text
+                    setStatus('Listening...');
+
+                    // Auto-resume listening
+                    if (shouldListenRef.current && recognitionRef.current) {
+                        recognitionRef.current.start();
+                    }
+                };
+
+                audio.play();
+            })
+            .catch(err => {
+                console.error('TTS error:', err);
+                setIsSpeaking(false);
+            });
+    };
+
+    return {
+        sessionId,
+        messages,
+        products,
+        isListening,
+        isSpeaking,
+        isThinking,
+        status,
+        liveUserText,
+        liveAiText,
+        analyser: analyserRef.current,
+        startListening,
+        stopListening,
+        sendMessage
+    };
 };
-
-return {
-    sessionId,
-    messages,
-    products,
-    isListening,
-    isSpeaking,
-    isThinking,
-    status,
-    liveUserText,
-    liveAiText,
-    analyser: analyserRef.current,
-    startListening,
-    stopListening,
-    sendMessage
-};
-};
+```
