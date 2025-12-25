@@ -2,6 +2,16 @@
 AI Shopping Assistant API
 Provides conversational AI endpoints for voice-based shopping experience
 """
+import sys
+if sys.version_info < (3, 10):
+    try:
+        import importlib.metadata
+        import importlib_metadata
+        if not hasattr(importlib.metadata, "packages_distributions"):
+            importlib.metadata.packages_distributions = importlib_metadata.packages_distributions
+    except ImportError:
+        pass
+
 import os
 import json
 from flask import Flask, request, jsonify
@@ -92,12 +102,16 @@ SECURITY & FORMATTING PROTOCOLS (HIGHEST PRIORITY):
 3. **TONE**: Warm, professional, concise, and expert.
 4. **NO ROBOTIC TEMPLATES**: Do not say "Based on your requirements". Just speak naturally.
 
-FORMAT FOR ACTIONS:  (Never show this to user)
-Search: {"action": "search", "query": "generic keywords", "message": "Checking our inventory..."}
-Vision: {"action": "open_camera", "message": "Sure, I can take a look. Please show me."}
-
-System Context (Search Results):
-"""
+95: FORMAT FOR ACTIONS:  (Never show this to user)
+96: Search: {"action": "search", "query": "generic keywords", "message": "Checking our inventory..."}
+97: Vision: {"action": "open_camera", "message": "Sure, I can take a look. Please show me."}
+98: 
+99: TRIGGER RULES:
+100: - If user says "search", "find", "looking for" -> OUTPUT SEARCH ACTION.
+101: - If user says "camera", "show you", "see this", "look at" -> OUTPUT VISION ACTION.
+102: 
+103: System Context (Search Results):
+104: """
 
 def search_products(query, limit=5):
     """Search products using the existing RAG API"""
@@ -135,7 +149,7 @@ def generate_gemini_response(messages):
         
         # Create model with system instruction
         model = genai.GenerativeModel(
-            model_name="gemini-3-pro-preview",
+            model_name="gemini-2.5-flash",
             system_instruction=system_instruction
         )
         
@@ -177,9 +191,14 @@ def generate_gemini_response(messages):
         print(f"Gemini connection error: {e}")
         return "I'm having trouble connecting to the cloud brain. Please check the connection."
 
+from agent_graph import graph
+from langchain_core.messages import HumanMessage, AIMessage
+
+# ... (imports) ...
+
 @app.route('/api/assistant/chat', methods=['POST'])
 def chat():
-    """Handle chat messages from the user"""
+    """Handle chat messages using LangGraph"""
     try:
         data = request.json
         user_message = data.get('message', '')
@@ -188,169 +207,170 @@ def chat():
         if not user_message:
             return jsonify({'error': 'Message is required'}), 400
         
-        # Initialize or get session
-        if session_id not in sessions:
-            sessions[session_id] = {
-                'history': [],
-                'created_at': datetime.now().isoformat(),
-                'stage': 'investigator' # Default stage
-            }
+        # Guardrail Check (Legacy Pre-check, though Graph captures it too)
+        # We'll rely on the Graph's system prompt for Guardrails now.
         
-        session = sessions[session_id]
+        # Invoke Graph
+        config = {"configurable": {"thread_id": session_id}}
         
-        # Build conversation context for Ollama
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        # Check if this is a "Yes" to a Vision Confirmation?
+        # The Graph memory handles context, so just passing "Yes" is enough.
         
-        # Add history
-        for msg in session['history'][-10:]:  # Keep last 10 messages for better context
-            messages.append({"role": msg['role'], "content": msg['content']})
-            
-        # Add current user message
-        messages.append({"role": "user", "content": user_message})
+        inputs = {"messages": [HumanMessage(content=user_message)]}
+        result = graph.invoke(inputs, config=config)
         
-        # Generate AI response
-        ai_message = generate_gemini_response(messages)
+        # Extract Response
+        last_message = result['messages'][-1]
+        ai_message = last_message.content
+        products = result.get('products', [])
         
-        # IRONCLAD GUARDRAIL CHECK
-        # If we are in 'investigator' stage and AI mentions a brand, BLOCK IT.
-        if session.get('stage') == 'investigator':
-            if detect_brand_leak(ai_message):
-                print(f"GUARDRAIL TRIGGERED: Blocked brand leak in '{ai_message}'")
-                ai_message = "I can certainly look into equipment options for you. To give you the best recommendation, could you tell me a bit more about your specific use case? For example, are you shooting indoors or outdoors?"
-
-        # Check if AI wants to search for products or place order
-        products = None
-        order_status = None
-        
-        if '{"action":' in ai_message and '}' in ai_message:
+        # Parse JSON if present to get clean message
+        if '{"action":' in ai_message:
             try:
-                # Extract JSON from response
+                import json
                 start = ai_message.find('{')
                 end = ai_message.rfind('}') + 1
                 action_data = json.loads(ai_message[start:end])
                 
-                action = action_data.get('action')
+                # Update ai_message to the user-facing part
+                ai_message = action_data.get('message', ai_message)
                 
-                if action == 'search':
-                    # SEARCH TRIGGERED: Move to 'presenter' stage
-                    session['stage'] = 'presenter'
-                    
-                    search_query = action_data.get('query', user_message)
-                    products = search_products(search_query)
-                    ai_message = action_data.get('message', 'Let me search for that...')
-                    
-                    # INJECT CONTEXT: Add found products to history so AI "remembers" them
-                    if products:
-                        product_context = "System Context: Found the following products:\n"
-                        for p in products:
-                            price = p.get('variants', [{}])[0].get('price', 'N/A')
-                            product_context += f"- {p.get('title')} (Price: {price})\n"
-                        
-                        # Add hidden system message to history
-                        session['history'].append({'role': 'system', 'content': product_context})
-
-                        # CRITICAL: Trigger a second LLM generation immediately to explain the results
-                        # This ensures the user gets the explanation + products in the same turn
-                        explanation_messages = messages + [{"role": "system", "content": product_context}]
-                        ai_message = generate_gemini_response(explanation_messages)
-                    
-                elif action == 'add_to_cart':
-                    product_name = action_data.get('product', '')
-                    if product_name:
-                        session['cart'].append({'name': product_name, 'quantity': 1})
-                        ai_message = action_data.get('message', f'Added {product_name} to your cart!')
-                    
-                elif action == 'remove_from_cart':
-                    product_name = action_data.get('product', '')
-                    session['cart'] = [item for item in session['cart'] if item['name'] != product_name]
-                    ai_message = action_data.get('message', f'Removed {product_name} from cart.')
-                    
-                elif action == 'view_cart':
-                    if session['cart']:
-                        cart_items = [item['name'] for item in session['cart']]
-                        ai_message = f"Your cart has: {', '.join(cart_items)}"
-                    else:
-                        ai_message = "Your cart is empty."
-                    
-                elif action == 'place_order':
-                    if session['cart']:
-                        items = [item['name'] for item in session['cart']]
-                        order_status = {
-                            'status': 'success',
-                            'order_id': f'ORD-{int(datetime.now().timestamp())}',
-                            'items': items,
-                            'message': f"Order placed successfully! You will receive a confirmation email shortly."
-                        }
-                        session['cart'] = []  # Clear cart
-                        ai_message = order_status['message']
-                    else:
-                        ai_message = "Your cart is empty. Add some products first!"
-                    
-                elif action == 'order':
-                    items = action_data.get('items', [])
-                    # Simulate order placement
-                    order_status = {
-                        'status': 'success',
-                        'order_id': f'ORD-{int(datetime.now().timestamp())}',
-                        'items': items,
-                        'message': f"Order placed successfully for {', '.join(items)}! You will receive a confirmation email shortly."
-                    }
-                    ai_message = action_data.get('message', 'Placing your order now...')
-                    
-                elif action == 'open_camera':
-                    # CAMERA TRIGGERED
-                    ai_message = action_data.get('message', 'Sure, showing you the camera.')
-                    # We need to pass this action to frontend
-                    # We'll use a specific key in response_data later
-                    
-            except json.JSONDecodeError:
-                pass  # If JSON parsing fails, just continue with the text response
-        
-        # Add to session history
-        session['history'].append({'role': 'user', 'content': user_message})
-        session['history'].append({'role': 'assistant', 'content': ai_message})
-        
-        # Prepare response
+                # Check for action type
+                if action_data.get('action') == 'open_camera':
+                     # We still pass the action flag
+                     pass 
+                     
+            except Exception as e:
+                print(f"Error parsing JSON in chat response: {e}")
+                
+        # Response Data
         response_data = {
             'message': ai_message,
             'session_id': session_id,
             'timestamp': datetime.now().isoformat()
         }
         
-        # Pass action if present
-        if '{"action": "open_camera"' in ai_message or (locals().get('action') == 'open_camera'):
+        # Pass action back for frontend handling (Open Camera)
+        # We check the ORIGINAL content or the parsed data
+        if '{"action": "open_camera"' in last_message.content:
              response_data['action'] = 'open_camera'
         
         if products:
             response_data['products'] = products
             
-        if order_status:
-            response_data['order'] = order_status
-            # If order successful, append the success message to the response text so user hears/sees it
-            response_data['message'] = order_status['message']
-        
         return jsonify(response_data)
         
     except Exception as e:
         print(f"Error in chat endpoint: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/assistant/session/new', methods=['POST'])
-def new_session():
-    """Create a new conversation session"""
-    session_id = f"session_{datetime.now().timestamp()}"
-    sessions[session_id] = {
-        'history': [],
-        'created_at': datetime.now().isoformat()
-    }
-    return jsonify({'session_id': session_id})
+# ... (session endpoints) ...
 
-@app.route('/api/assistant/session/<session_id>', methods=['DELETE'])
-def end_session(session_id):
-    """End a conversation session"""
-    if session_id in sessions:
-        del sessions[session_id]
-    return jsonify({'status': 'success'})
+@app.route('/api/assistant/vision', methods=['POST'])
+def vision_analysis():
+    """Analyze image using Gemini Vision Pro"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+            
+        # Read image data
+        image_data = file.read()
+        
+        # Configure Gemini (Direct usage here, outside graph for now)
+        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+        model = genai.GenerativeModel('gemini-2.0-flash-exp') 
+        
+        # Prompt for analysis
+        prompt = "Identify this product type concisely (e.g., 'Sony A7 camera', 'Rode microphone'). Return ONLY the name of the product."
+        
+        # Generate content
+        import PIL.Image
+        import io
+        image = PIL.Image.open(io.BytesIO(image_data))
+        
+        response = model.generate_content([prompt, image])
+        text_response = response.text.strip()
+        
+        # Formulate confirmation message
+        message = f"I see what looks like a {text_response}. Is this the product you are looking for?"
+        
+        # UPDATE GRAPH STATE: Inject this interaction so the next "Yes" from user has context
+        session_id = request.form.get('session_id', 'default')
+        config = {"configurable": {"thread_id": session_id}}
+        
+        # We inject a specific history sequence
+        graph.update_state(config, {"messages": [
+            HumanMessage(content=f"[User showed an image of {text_response}]"),
+            AIMessage(content=message)
+        ]})
+
+        return jsonify({
+            'message': message,
+             # Return empty products to prevent auto-display
+            'products': []
+        })
+
+    except Exception as e:
+        print(f"Error in Vision endpoint: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/assistant/scan', methods=['POST'])
+def scan_analysis():
+    """Fast scan image using Gemini Flash"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+            
+        # Read image data
+        image_data = file.read()
+        
+        # Configure Gemini (Direct usage here, outside graph for now)
+        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+        model = genai.GenerativeModel('gemini-2.0-flash-exp') 
+        
+        # Prompt for analysis
+        prompt = '''
+        Analyze this image. Detect professional camera or audio equipment.
+        Return JSON with a list of detections:
+        {
+          "objects": [
+            {
+              "label": "Short Name (e.g. Sony A7)",
+              "box_2d": [ymin, xmin, ymax, xmax]  // Normalized coordinates 0-1
+            }
+          ]
+        }
+        test
+        If nothing relevant is found, return {"objects": []}.
+        Return ONLY JSON.
+        '''
+        
+        # Generate content
+        import PIL.Image
+        import io
+        image = PIL.Image.open(io.BytesIO(image_data))
+        
+        response = model.generate_content([prompt, image])
+        text_response = response.text.replace("```json", "").replace("```", "").strip()
+        
+        try:
+            result = json.loads(text_response)
+        except:
+            result = {"objects": []}
+            
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"Error in Scan endpoint: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/assistant/tts', methods=['POST'])
 def tts():
@@ -396,60 +416,23 @@ def tts():
         print(f"Error in TTS endpoint: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/assistant/vision', methods=['POST'])
-def vision_analysis():
-    """Analyze image using Gemini Vision Pro"""
-    try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file part'}), 400
-            
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No selected file'}), 400
-            
-        # Read image data
-        image_data = file.read()
-        
-        # Configure Gemini
-        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-        model = genai.GenerativeModel('gemini-1.5-flash') # Use Flash for speed
-        
-        # Prompt for analysis
-        prompt = "Identify this product type concisely (e.g., 'Sony A7 camera', 'Rode microphone'). Then provide a JSON object with a search query for this item: {\"query\": \"keywords\"}."
-        
-        # Generate content
-        import PIL.Image
-        import io
-        image = PIL.Image.open(io.BytesIO(image_data))
-        
-        response = model.generate_content([prompt, image])
-        text_response = response.text
-        
-        # Extract query
-        search_query = "camera equipment" # Fallback
-        if '{"query":' in text_response:
-            try:
-                start = text_response.find('{')
-                end = text_response.rfind('}') + 1
-                json_data = json.loads(text_response[start:end])
-                search_query = json_data.get('query', search_query)
-            except:
-                pass
-        
-        # Search for products
-        products = search_products(search_query)
-        
-        # Formulate message
-        message = f"I see what looks like {search_query}. Here are some similar items from our inventory."
-        
-        return jsonify({
-            'message': message,
-            'products': products
-        })
+@app.route('/api/assistant/session/new', methods=['POST'])
+def new_session():
+    """Create a new conversation session"""
+    session_id = f"session_{datetime.now().timestamp()}"
+    sessions[session_id] = {
+        'history': [],
+        'created_at': datetime.now().isoformat()
+    }
+    return jsonify({'session_id': session_id})
 
-    except Exception as e:
-        print(f"Error in Vision endpoint: {e}")
-        return jsonify({'error': str(e)}), 500
+@app.route('/api/assistant/session/<session_id>', methods=['DELETE'])
+def end_session(session_id):
+    """End a conversation session"""
+    if session_id in sessions:
+        # For LangGraph memory, we might want to clear it too, but for now just clear local dict works for auth check logic
+        del sessions[session_id]
+    return jsonify({'status': 'success'})
 
 @app.route('/api/assistant/health', methods=['GET'])
 def health():

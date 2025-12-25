@@ -34,7 +34,7 @@ const lightTheme = createTheme({
 function App() {
   const {
     status, isListening, isSpeaking, isThinking, analyser, products,
-    liveUserText, liveAiText, isCameraOpen, setIsCameraOpen, analyzeImage,
+    liveUserText, liveAiText, isCameraOpen, setIsCameraOpen, analyzeImage, scanImage,
     startListening, stopListening, sendMessage
   } = useAssistant();
 
@@ -44,34 +44,105 @@ function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
+  // Ref to track if we found something to stop the loop race condition
+  const foundRef = useRef(false);
+
   useEffect(() => {
     let stream = null;
+    let interval = null;
+
     if (isCameraOpen) {
+      foundRef.current = false; // Reset found state
+
+      // Start Video Stream
       navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
         .then(s => {
           stream = s;
           if (videoRef.current) videoRef.current.srcObject = s;
+
+          // Continuous Scan Loop (Every 1s)
+          interval = setInterval(() => {
+            if (!foundRef.current) handleScan();
+          }, 1000);
         })
         .catch(err => {
           console.error("Camera Error:", err);
           setIsCameraOpen(false);
         });
     }
+
     return () => {
       if (stream) stream.getTracks().forEach(track => track.stop());
+      if (interval) clearInterval(interval);
     };
   }, [isCameraOpen]);
 
-  const handleCapture = () => {
-    if (videoRef.current && canvasRef.current) {
+  const handleScan = () => {
+    if (videoRef.current && canvasRef.current && !isThinking) {
       const video = videoRef.current;
-      const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      canvas.toBlob(blob => {
-        analyzeImage(blob);
-      }, 'image/jpeg', 0.8);
+
+      // Ensure dimensions
+      if (video.videoWidth === 0) return;
+
+      // Capture frame
+      const captureCanvas = document.createElement('canvas');
+      captureCanvas.width = video.videoWidth;
+      captureCanvas.height = video.videoHeight;
+      captureCanvas.getContext('2d').drawImage(video, 0, 0);
+
+      captureCanvas.toBlob(async blob => {
+        // If already found, don't scan again
+        if (foundRef.current) return;
+
+        const result = await scanImage(blob);
+
+        if (canvasRef.current && result && result.objects && result.objects.length > 0) {
+          const ctx = canvasRef.current.getContext('2d');
+          canvasRef.current.width = video.videoWidth;
+          canvasRef.current.height = video.videoHeight;
+
+          const w = video.videoWidth;
+          const h = video.videoHeight;
+
+          ctx.clearRect(0, 0, w, h);
+
+          // Draw Boxes
+          result.objects.forEach(obj => {
+            const [ymin, xmin, ymax, xmax] = obj.box_2d;
+            const x = xmin * w;
+            const y = ymin * h;
+            const boxW = (xmax - xmin) * w;
+            const boxH = (ymax - ymin) * h;
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(x, y, boxW, boxH);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(x, y - 25, ctx.measureText(obj.label).width + 20, 25);
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText(obj.label, x + 5, y - 7);
+          });
+
+          // FOUND IT! Trigger Confirmation
+          if (!foundRef.current) {
+            foundRef.current = true;
+            // Fast reaction: 500ms delay to show box, then CLOSE
+            setTimeout(() => {
+              setIsCameraOpen(false); // Immediate Close
+              // Optimization: Don't re-analyze image. Identify via text.
+              // "System: Camera detected [Object]. Ask user if correct."
+              const label = result.objects[0].label; // Use first object
+              sendMessage(`(System: The camera detected a '${label}'. Tell the user you see it and ask if that's the product they want.)`, true);
+            }, 500);
+          }
+        } else {
+          // Clear canvas if nothing found
+          if (canvasRef.current) {
+            const ctx = canvasRef.current.getContext('2d');
+            ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+          }
+        }
+      }, 'image/jpeg', 0.5);
     }
   };
 
@@ -198,19 +269,17 @@ function App() {
                   position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
                   bgcolor: 'black', zIndex: 10,
                   display: 'flex', flexDirection: 'column',
-                  overflow: 'hidden', borderRadius: 4
+                  overflow: 'hidden', borderRadius: 4,
+                  alignItems: 'center', justifyContent: 'center'
                 }}>
-                  <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <canvas ref={canvasRef} style={{ display: 'none' }} />
+                  <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
+                  <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
 
-                  <Box sx={{ position: 'absolute', bottom: 20, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 4, alignItems: 'center' }}>
-                    <IconButton onClick={() => setIsCameraOpen(false)} sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }}>
-                      <Close />
-                    </IconButton>
-                    <IconButton onClick={handleCapture} sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#e0e0e0' }, width: 70, height: 70 }}>
-                      <FiberManualRecord sx={{ color: 'red', fontSize: 40 }} />
-                    </IconButton>
-                  </Box>
+                  {/* Overlay Removed */}
+
+                  <IconButton onClick={() => setIsCameraOpen(false)} sx={{ position: 'absolute', top: 10, right: 10, color: 'white' }}>
+                    <Close />
+                  </IconButton>
                 </Box>
               </Fade>
 
