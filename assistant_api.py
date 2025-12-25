@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import requests
+import google.generativeai as genai
 from datetime import datetime
 
 # Load environment variables
@@ -122,28 +123,58 @@ def search_products(query, limit=5):
         print(f"Error searching products: {e}")
         return []
 
-def generate_ollama_response(messages):
-    """Generate response using local Ollama instance"""
-    ollama_host = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
-    model = os.getenv('OLLAMA_MODEL', 'llama3')
-    
+
+def generate_gemini_response(messages):
+    """Generate response using Google Gemini Pro"""
     try:
-        response = requests.post(
-            f"{ollama_host}/api/chat",
-            json={
-                "model": model,
-                "messages": messages,
-                "stream": False
-            },
-            timeout=60
+        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+        
+        # Extract system prompt and history
+        system_instruction = messages[0]['content'] if messages[0]['role'] == 'system' else ""
+        
+        # Create model with system instruction
+        model = genai.GenerativeModel(
+            model_name="gemini-3-pro-preview",
+            system_instruction=system_instruction
         )
-        if response.status_code == 200:
-            return response.json()['message']['content']
-        else:
-            return f"Error: Ollama returned status {response.status_code}"
+        
+        # Convert history format for Gemini
+        chat_history = []
+        conversation_msgs = messages[1:] # Skip system prompt
+        
+        for msg in conversation_msgs:
+            role = "user" if msg['role'] == 'user' else "model"
+            # Filter out hidden system messages injected into history if they confuse the model,
+            # BUT for RAG context we usually kept them as 'user' or 'model' messages in Ollama.
+            # Gemini strictly enforces user/model turns.
+            # "system" content in history (like search results) usually needs to be treated as User data or Model context.
+            # We'll map 'system' (search results) to 'user' role for Gemini to see it as input.
+            if msg['role'] == 'system':
+                role = "user" 
+            
+            chat_history.append({"role": role, "parts": [msg['content']]})
+            
+        # The last message is the current prompt, but the chat.send_message API handles context differently.
+        # We can just use the history to start a chat session.
+        
+        # Validation: Gemini chat history must alternate User/Model. 
+        # Only strict requirement is it typically starts with User.
+        # Simplification: We will just form a strict context prompt if history is messy,
+        # OR better: usage of valid history list.
+        
+        # Let's try stateless generation for maximum robustness with the specific prompt structure
+        # ensuring the context is passed effectively.
+        
+        # Construct full prompt for stateless request (simplest migration from Ollama)
+        # OR use chat session. Let's use chat session but strictly formatted.
+        
+        chat = model.start_chat(history=chat_history[:-1]) # History excluding last
+        response = chat.send_message(chat_history[-1]['parts'][0])
+        
+        return response.text
     except Exception as e:
-        print(f"Ollama connection error: {e}")
-        return "I'm having trouble connecting to my brain. Please make sure Ollama is running."
+        print(f"Gemini connection error: {e}")
+        return "I'm having trouble connecting to the cloud brain. Please check the connection."
 
 @app.route('/api/assistant/chat', methods=['POST'])
 def chat():
@@ -177,7 +208,7 @@ def chat():
         messages.append({"role": "user", "content": user_message})
         
         # Generate AI response
-        ai_message = generate_ollama_response(messages)
+        ai_message = generate_gemini_response(messages)
         
         # IRONCLAD GUARDRAIL CHECK
         # If we are in 'investigator' stage and AI mentions a brand, BLOCK IT.
@@ -220,7 +251,7 @@ def chat():
                         # CRITICAL: Trigger a second LLM generation immediately to explain the results
                         # This ensures the user gets the explanation + products in the same turn
                         explanation_messages = messages + [{"role": "system", "content": product_context}]
-                        ai_message = generate_ollama_response(explanation_messages)
+                        ai_message = generate_gemini_response(explanation_messages)
                     
                 elif action == 'add_to_cart':
                     product_name = action_data.get('product', '')
