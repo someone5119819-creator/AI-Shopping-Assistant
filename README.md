@@ -1,11 +1,22 @@
 # Voice-First AI Shopping Consultant (Gemini Pro Edition)
 
-> **"The Smart Consultant"** — An uncompromisingly guardrailed, voice-enabled AI shopping assistant powered by Google Gemini 1.5 Pro, ElevenLabs, and reactively synchronized frontend logic.
+> **"The Smart Consultant"** — An uncompromisingly guardrailed, voice-enabled AI shopping assistant powered by Google Gemini 3 Pro, ElevenLabs, and reactively synchronized frontend logic.
 
 ![Status](https://img.shields.io/badge/Status-Production_Ready-success)
-![Brain](https://img.shields.io/badge/Brain-Gemini_1.5_Pro-blue)
+![Brain](https://img.shields.io/badge/Brain-Gemini_3_Pro-blue)
 ![Voice](https://img.shields.io/badge/Voice-ElevenLabs_Turbo_v2-orange)
 ![Search](https://img.shields.io/badge/Search-Hybrid_RAG-green)
+
+---
+
+## 📚 Documentation Hub
+For a deep dive into specific components, please refer to our high-fidelity technical guides:
+
+*   **[Overall Architecture](./DOCS/OVERVIEW.md)**: Product philosophy and technical stack.
+*   **[Backend & Model Logic](./DOCS/BACKEND_MODEL.md)**: State machine, system prompts, and brand guardrails.
+*   **[RAG & Hybrid Search](./DOCS/RAG_ENGINE.md)**: Vector DB internals and BM25 ranking.
+*   **[Frontend & Visual Sync](./DOCS/FRONTEND_UX.md)**: React architecture, Orb visualizer, and mic sync.
+*   **[API Reference](./DOCS/API_REFERENCE.md)**: Endpoint definitions and schema.
 
 ---
 
@@ -22,7 +33,7 @@ This project is not a generic chatbot. It is a specialized **Consultant Agent** 
 
 ### Backend (The "Brain")
 *   **Core**: Python / Flask
-*   **LLM**: **Google Gemini 1.5 Pro** (Cloud)
+*   **LLM**: **Google Gemini 3 Pro** (Cloud)
     *   *Why?* Superior reasoning capabilities compared to local models, essential for maintaining strict state adherence.
 *   **RAG Engine**:
     *   **Vector Store**: `ChromaDB` (Local)
@@ -169,5 +180,5 @@ npm run dev
     *   Added Python-level brand interception to stop hallucinations.
     *   Strict "Database Reality" prompt enforcement.
 *   **v3.0 (Current)**: **Cloud Migration**.
-    *   Migrated LLM to **Google Gemini 1.5 Pro**.
+    *   Migrated LLM to **Google Gemini 3 Pro**.
     *   Implemented frontend Auto-Mute/Unmute synchronization.
