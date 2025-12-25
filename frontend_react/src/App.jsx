@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ThemeProvider, createTheme, CssBaseline, Box, IconButton, Fab, TextField, Typography, Card, CardContent, CardMedia, Slide, Chip, Fade, Paper, Badge } from '@mui/material';
-import { Mic, Send, Keyboard, Close, MoreVert, CallEnd, ShoppingCart } from '@mui/icons-material';
+import { Mic, Send, Keyboard, Close, MoreVert, CallEnd, ShoppingCart, CameraAlt, FiberManualRecord } from '@mui/icons-material';
 import OrbVisualizer from './components/OrbVisualizer';
 import { useAssistant } from './hooks/useAssistant';
 
@@ -34,12 +34,46 @@ const lightTheme = createTheme({
 function App() {
   const {
     status, isListening, isSpeaking, isThinking, analyser, products,
-    liveUserText, liveAiText,
+    liveUserText, liveAiText, isCameraOpen, setIsCameraOpen, analyzeImage,
     startListening, stopListening, sendMessage
   } = useAssistant();
 
   const [showInput, setShowInput] = useState(false);
   const [inputText, setInputText] = useState('');
+
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    let stream = null;
+    if (isCameraOpen) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(s => {
+          stream = s;
+          if (videoRef.current) videoRef.current.srcObject = s;
+        })
+        .catch(err => {
+          console.error("Camera Error:", err);
+          setIsCameraOpen(false);
+        });
+    }
+    return () => {
+      if (stream) stream.getTracks().forEach(track => track.stop());
+    };
+  }, [isCameraOpen]);
+
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      canvas.toBlob(blob => {
+        analyzeImage(blob);
+      }, 'image/jpeg', 0.8);
+    }
+  };
 
   const toggleMic = () => {
     if (isListening) stopListening();
@@ -148,7 +182,7 @@ function App() {
               width: '90%',
               flex: 1, // Fill remaining space
               minHeight: '200px', // Min height
-              bgcolor: '#f9f9f9',
+              bgcolor: '#f7f7f7ff',
               borderRadius: 3,
               border: '1px solid rgba(0,0,0,0.05)',
               p: 2,
@@ -158,6 +192,28 @@ function App() {
               position: 'relative'
             }}>
 
+              {/* Camera View */}
+              <Fade in={isCameraOpen} unmountOnExit>
+                <Box sx={{
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  bgcolor: 'black', zIndex: 10,
+                  display: 'flex', flexDirection: 'column',
+                  overflow: 'hidden', borderRadius: 4
+                }}>
+                  <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+                  <Box sx={{ position: 'absolute', bottom: 20, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 4, alignItems: 'center' }}>
+                    <IconButton onClick={() => setIsCameraOpen(false)} sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                      <Close />
+                    </IconButton>
+                    <IconButton onClick={handleCapture} sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#e0e0e0' }, width: 70, height: 70 }}>
+                      <FiberManualRecord sx={{ color: 'red', fontSize: 40 }} />
+                    </IconButton>
+                  </Box>
+                </Box>
+              </Fade>
+
               {/* Product Recommendations View */}
               <Fade in={products.length > 0} unmountOnExit>
                 <Box sx={{
@@ -165,20 +221,21 @@ function App() {
                   top: 0, left: 0, right: 0, bottom: 0,
                   overflowY: 'auto',
                   p: 2,
-                  zIndex: 2
+                  zIndex: 2,
+                  '&::-webkit-scrollbar': { display: 'none' },
+                  msOverflowStyle: 'none',
+                  scrollbarWidth: 'none',
                 }}>
-                  <Typography variant="overline" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 600 }}>
-                    Recommendation
-                  </Typography>
+
                   {products.map((p, i) => (
                     <Card key={i} elevation={0} sx={{
                       mb: 2,
                       display: 'flex',
                       alignItems: 'center',
-                      p: 1,
+                      p: 2,
                       bgcolor: '#ffffff',
                       border: '1px solid rgba(0,0,0,0.05)',
-                      borderRadius: 3
+                      borderRadius: 2
                     }}>
                       <CardMedia
                         component="img"

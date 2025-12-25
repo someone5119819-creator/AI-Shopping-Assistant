@@ -94,6 +94,7 @@ SECURITY & FORMATTING PROTOCOLS (HIGHEST PRIORITY):
 
 FORMAT FOR ACTIONS:  (Never show this to user)
 Search: {"action": "search", "query": "generic keywords", "message": "Checking our inventory..."}
+Vision: {"action": "open_camera", "message": "Sure, I can take a look. Please show me."}
 
 System Context (Search Results):
 """
@@ -296,6 +297,12 @@ def chat():
                     }
                     ai_message = action_data.get('message', 'Placing your order now...')
                     
+                elif action == 'open_camera':
+                    # CAMERA TRIGGERED
+                    ai_message = action_data.get('message', 'Sure, showing you the camera.')
+                    # We need to pass this action to frontend
+                    # We'll use a specific key in response_data later
+                    
             except json.JSONDecodeError:
                 pass  # If JSON parsing fails, just continue with the text response
         
@@ -309,6 +316,10 @@ def chat():
             'session_id': session_id,
             'timestamp': datetime.now().isoformat()
         }
+        
+        # Pass action if present
+        if '{"action": "open_camera"' in ai_message or (locals().get('action') == 'open_camera'):
+             response_data['action'] = 'open_camera'
         
         if products:
             response_data['products'] = products
@@ -383,6 +394,61 @@ def tts():
             
     except Exception as e:
         print(f"Error in TTS endpoint: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/assistant/vision', methods=['POST'])
+def vision_analysis():
+    """Analyze image using Gemini Vision Pro"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+            
+        # Read image data
+        image_data = file.read()
+        
+        # Configure Gemini
+        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+        model = genai.GenerativeModel('gemini-1.5-flash') # Use Flash for speed
+        
+        # Prompt for analysis
+        prompt = "Identify this product type concisely (e.g., 'Sony A7 camera', 'Rode microphone'). Then provide a JSON object with a search query for this item: {\"query\": \"keywords\"}."
+        
+        # Generate content
+        import PIL.Image
+        import io
+        image = PIL.Image.open(io.BytesIO(image_data))
+        
+        response = model.generate_content([prompt, image])
+        text_response = response.text
+        
+        # Extract query
+        search_query = "camera equipment" # Fallback
+        if '{"query":' in text_response:
+            try:
+                start = text_response.find('{')
+                end = text_response.rfind('}') + 1
+                json_data = json.loads(text_response[start:end])
+                search_query = json_data.get('query', search_query)
+            except:
+                pass
+        
+        # Search for products
+        products = search_products(search_query)
+        
+        # Formulate message
+        message = f"I see what looks like {search_query}. Here are some similar items from our inventory."
+        
+        return jsonify({
+            'message': message,
+            'products': products
+        })
+
+    except Exception as e:
+        print(f"Error in Vision endpoint: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/assistant/health', methods=['GET'])

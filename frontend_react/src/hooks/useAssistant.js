@@ -16,6 +16,9 @@ export const useAssistant = () => {
     const [liveUserText, setLiveUserText] = useState('');
     const [liveAiText, setLiveAiText] = useState('');
 
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
+
+    // ... existing refs ...
     const audioContextRef = useRef(null);
     const analyserRef = useRef(null);
     const recognitionRef = useRef(null);
@@ -172,17 +175,55 @@ export const useAssistant = () => {
         }
     };
 
+    // Analyze Image Logic
+    const analyzeImage = async (imageBlob) => {
+        setIsThinking(true);
+        isThinkingRef.current = true;
+        setStatus('Analyzing...');
+
+        // Stop Mic during analysis
+        if (recognitionRef.current) recognitionRef.current.stop();
+
+        const formData = new FormData();
+        formData.append('file', imageBlob, 'capture.jpg');
+        formData.append('session_id', sessionId);
+
+        try {
+            const res = await fetch(`${API_BASE}/vision`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            setIsThinking(false);
+            isThinkingRef.current = false;
+            setIsCameraOpen(false); // Close camera on success
+            handleResponse(data);
+        } catch (err) {
+            console.error("Vision Error", err);
+            setIsThinking(false);
+            isThinkingRef.current = false;
+            setStatus('Error');
+            // Restart Mic
+            if (shouldListenRef.current && recognitionRef.current) recognitionRef.current.start();
+        }
+    };
+
     const handleResponse = (data) => {
+        // Handle Camera Action
+        if (data.action === 'open_camera') {
+            setIsCameraOpen(true);
+            setStatus('Camera Ready');
+        }
+
         if (data.products && data.products.length > 0) {
             setProducts(data.products);
             setStatus('Products Found');
-            // setLiveAiText(data.message); // Reliance on typewriter
             speak(data.message);
             addMessage('assistant', data.message);
         } else {
             setProducts([]);
             setStatus('Speaking...');
-            // setLiveAiText(data.message); // Reliance on typewriter
             speak(data.message);
             addMessage('assistant', data.message);
         }
@@ -276,6 +317,9 @@ export const useAssistant = () => {
         status,
         liveUserText,
         liveAiText,
+        isCameraOpen,       // Export
+        setIsCameraOpen,    // Export
+        analyzeImage,       // Export
         analyser: analyserRef.current,
         startListening,
         stopListening,
