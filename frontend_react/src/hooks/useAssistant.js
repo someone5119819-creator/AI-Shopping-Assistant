@@ -176,13 +176,13 @@ export const useAssistant = () => {
         if (data.products && data.products.length > 0) {
             setProducts(data.products);
             setStatus('Products Found');
-            setLiveAiText(data.message);
+            // setLiveAiText(data.message); // Reliance on typewriter
             speak(data.message);
             addMessage('assistant', data.message);
         } else {
             setProducts([]);
             setStatus('Speaking...');
-            setLiveAiText(data.message);
+            // setLiveAiText(data.message); // Reliance on typewriter
             speak(data.message);
             addMessage('assistant', data.message);
         }
@@ -193,6 +193,8 @@ export const useAssistant = () => {
     };
 
     // TTS
+    const typeWriterRef = useRef(null);
+
     const speak = (text) => {
         if (!text) return;
 
@@ -210,6 +212,10 @@ export const useAssistant = () => {
                 const audio = new Audio(url);
                 audio.crossOrigin = "anonymous";
 
+                // Clear any previous typewriter
+                if (typeWriterRef.current) clearInterval(typeWriterRef.current);
+                setLiveAiText(''); // Correct: Start empty
+
                 audio.onplay = () => {
                     setIsSpeaking(true);
                     isSpeakingRef.current = true; // Sync Ref
@@ -220,12 +226,34 @@ export const useAssistant = () => {
                     const source = ctx.createMediaElementSource(audio);
                     source.connect(analyserRef.current);
                     source.connect(ctx.destination);
+
+                    // Typewriter Effect
+                    // Average speaking rate ~ 15 chars per second (adjust as needed)
+                    // Or we can try to use audio.duration if metadata is loaded (might be NaN at start)
+                    let i = 0;
+                    const speed = 50; // ms per char (approx 20 chars/sec)
+
+                    typeWriterRef.current = setInterval(() => {
+                        if (i < text.length) {
+                            setLiveAiText(prev => prev + text.charAt(i));
+                            i++;
+                        } else {
+                            clearInterval(typeWriterRef.current);
+                        }
+                    }, speed);
                 };
 
                 audio.onended = () => {
+                    if (typeWriterRef.current) clearInterval(typeWriterRef.current);
                     setIsSpeaking(false);
                     isSpeakingRef.current = false; // Sync Ref
-                    setLiveAiText(''); // Clear AI text
+                    // Do NOT clear liveAiText here (let user read it). 
+                    // Or clear it after delay? 
+                    // User request implies syncing output *appearance*. 
+                    // Usually we keep it until next turn.
+
+                    // setLiveAiText(''); // COMMENTED OUT: Let it persist until next turn or new speak
+
                     setStatus('Listening...');
                     // Resume listening
                     if (shouldListenRef.current && recognitionRef.current) {

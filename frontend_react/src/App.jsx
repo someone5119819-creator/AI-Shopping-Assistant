@@ -4,26 +4,30 @@ import { Mic, Send, Keyboard, Close, MoreVert, CallEnd, ShoppingCart } from '@mu
 import OrbVisualizer from './components/OrbVisualizer';
 import { useAssistant } from './hooks/useAssistant';
 
-// Dark Theme Configuration
-const darkTheme = createTheme({
+// Light Theme Configuration
+const lightTheme = createTheme({
   palette: {
-    mode: 'dark',
+    mode: 'light',
     background: {
-      default: '#121212',
-      paper: '#000000',
+      default: '#f2f2f2',
+      paper: '#ffffff',
     },
     primary: {
-      main: '#d0bcff',
+      main: '#0026ffff', // A nice vibrant purple/blue
     },
     secondary: {
-      main: '#ccc2dc',
+      main: '#03dac6',
     },
+    text: {
+      primary: '#1c1b1f',
+      secondary: '#616161',
+    }
   },
   typography: {
-    fontFamily: 'Roboto, sans-serif',
+    fontFamily: 'Inter, system-ui, Avenir, Helvetica, Arial, sans-serif',
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: 16,
   }
 });
 
@@ -56,7 +60,7 @@ function App() {
   };
 
   return (
-    <ThemeProvider theme={darkTheme}>
+    <ThemeProvider theme={lightTheme}>
       <CssBaseline />
 
       {/* Outer Container - Centers the Widget */}
@@ -71,7 +75,7 @@ function App() {
       }}>
 
         {/* Widget Container - Max 600px */}
-        <Paper elevation={24} sx={{
+        <Paper elevation={0} sx={{
           width: '100%',
           maxWidth: '500px',
           height: '100%',
@@ -87,109 +91,167 @@ function App() {
           {/* Header */}
           <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
             <IconButton onClick={() => window.close()}><Close /></IconButton>
-            <Typography variant="h6" sx={{ color: 'text.secondary', fontWeight: 500 }}>AI Assistant</Typography>
-            <IconButton><MoreVert /></IconButton>
-          </Box>
-
-          {/* Visualizer Area */}
-          <Box sx={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <OrbVisualizer
-              isListening={isListening}
-              isSpeaking={isSpeaking}
-              isThinking={isThinking}
-              analyser={analyser}
-            />
-
-            {/* Live Transcript Overlay */}
-            <Box sx={{
-              position: 'absolute',
-              top: '15%',
-              left: 0,
-              right: 0,
-              p: 3,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 2,
-              pointerEvents: 'none',
-              zIndex: 5
-            }}>
-              {/* AI Transcript */}
-              <Fade in={!!liveAiText}>
-                <Typography
-                  variant="h5"
-                  align="center"
-                  sx={{
-                    color: 'primary.light',
-                    textShadow: '0 0 10px rgba(208,188,255,0.5)',
-                    fontWeight: 400,
-                    px: 2
-                  }}
-                >
-                  {liveAiText}
-                </Typography>
-              </Fade>
-
-              {/* User Transcript */}
-              <Fade in={!!liveUserText}>
-                <Typography
-                  variant="h5"
-                  align="center"
-                  sx={{
-                    color: 'text.primary',
-                    opacity: 0.9,
-                    fontStyle: 'italic',
-                    px: 2
-                  }}
-                >
-                  "{liveUserText}"
-                </Typography>
-              </Fade>
-            </Box>
-
-            {/* Status Chip */}
+            <Typography variant="subtitle1" sx={{ color: 'text.secondary', fontWeight: 500 }}>AI Assistant</Typography>
             <Chip
               label={status}
+              size="small"
               sx={{
-                position: 'absolute',
-                bottom: '15%',
-                opacity: isListening || isThinking || isSpeaking ? 1 : 0.6,
-                transition: 'opacity 0.3s',
-                bgcolor: 'rgba(0,0,0,0.5)'
+                bgcolor: isListening || isThinking || isSpeaking ? 'rgba(98, 0, 238, 0.08)' : '#f5f5f5',
+                color: isListening || isThinking || isSpeaking ? 'primary.main' : 'text.secondary',
+                fontWeight: 600,
+                border: 'none'
               }}
             />
           </Box>
 
-          {/* Products Overlay */}
-          <Fade in={products.length > 0}>
+          {/* Visualizer Area */}
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', pt: 3, gap: 2 }}>
+
+            {/* Orb Rectangle (Mask) */}
             <Box sx={{
-              position: 'absolute',
-              top: 70,
-              left: 0,
-              right: 0,
-              bottom: 120,
-              p: 2,
-              overflowY: 'auto',
-              background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.95) 15%)',
-              pointerEvents: products.length > 0 ? 'auto' : 'none',
-              zIndex: 6
+              width: '90%',
+              height: '104px',
+              bgcolor: '#f9f9f9',
+              borderRadius: 3,
+              border: '1px solid rgba(0,0,0,0.05)',
+              position: 'relative',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}>
-              {products.map((p, i) => (
-                <Card key={i} sx={{ mb: 2, display: 'flex', alignItems: 'center', p: 1, bgcolor: 'rgba(30,30,30,0.95)' }}>
-                  <CardMedia
-                    component="img"
-                    sx={{ width: 80, height: 80, borderRadius: 2 }}
-                    image={p.metadata.image_url}
-                    alt={p.metadata.title}
-                  />
-                  <CardContent sx={{ flex: 1, py: 0 }}>
-                    <Typography variant="subtitle2" noWrap>{p.metadata.title}</Typography>
-                    <Typography variant="body2" color="primary">₹{p.metadata.price}</Typography>
-                  </CardContent>
-                </Card>
-              ))}
+              {/* Large Orb Container (Absolute & Centered) */}
+              <Box sx={{
+                position: 'absolute',
+                width: '100%',
+                height: '300px',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <OrbVisualizer
+                  isListening={isListening}
+                  isSpeaking={isSpeaking}
+                  isThinking={isThinking}
+                  analyser={analyser}
+                />
+              </Box>
+
+
             </Box>
-          </Fade>
+
+            {/* Dynamic Content Area (Transcript or Products) */}
+            <Box sx={{
+              width: '90%',
+              flex: 1, // Fill remaining space
+              minHeight: '200px', // Min height
+              bgcolor: '#f9f9f9',
+              borderRadius: 3,
+              border: '1px solid rgba(0,0,0,0.05)',
+              p: 2,
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative'
+            }}>
+
+              {/* Product Recommendations View */}
+              <Fade in={products.length > 0} unmountOnExit>
+                <Box sx={{
+                  position: 'absolute',
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  overflowY: 'auto',
+                  p: 2,
+                  zIndex: 2
+                }}>
+                  <Typography variant="overline" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 600 }}>
+                    Recommendation
+                  </Typography>
+                  {products.map((p, i) => (
+                    <Card key={i} elevation={0} sx={{
+                      mb: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      p: 1,
+                      bgcolor: '#ffffff',
+                      border: '1px solid rgba(0,0,0,0.05)',
+                      borderRadius: 3
+                    }}>
+                      <CardMedia
+                        component="img"
+                        sx={{ width: 70, height: 70, borderRadius: 2 }}
+                        image={p.metadata.image_url}
+                        alt={p.metadata.title}
+                      />
+                      <CardContent sx={{ flex: 1, py: 0, px: 2, '&:last-child': { pb: 0 } }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2, mb: 0.5 }}>
+                          {p.metadata.title}
+                        </Typography>
+                        <Typography variant="body2" color="primary" fontWeight="bold">
+                          ₹{p.metadata.price}
+                        </Typography>
+                      </CardContent>
+                      <IconButton size="small" color="primary"><ShoppingCart fontSize="small" /></IconButton>
+                    </Card>
+                  ))}
+                </Box>
+              </Fade>
+
+              {/* Live Transcript View (Default) */}
+              <Fade in={products.length === 0}>
+                <Box sx={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2
+                }}>
+                  {/* AI Transcript */}
+                  <Fade in={!!liveAiText}>
+                    <Typography
+                      variant="h6"
+                      align="center"
+                      sx={{
+                        color: 'primary.main',
+                        fontWeight: 500,
+                        px: 1,
+                        display: '-webkit-box',
+                        overflow: 'hidden',
+                        WebkitBoxOrient: 'vertical',
+                        WebkitLineClamp: 4, // Allow slightly more lines in this larger box
+                      }}
+                    >
+                      {liveAiText}
+                    </Typography>
+                  </Fade>
+
+                  {/* User Transcript */}
+                  <Fade in={!!liveUserText}>
+                    <Typography
+                      variant="subtitle1"
+                      align="center"
+                      sx={{
+                        color: 'text.secondary',
+                        fontStyle: 'italic',
+                        px: 1,
+                        display: '-webkit-box',
+                        overflow: 'hidden',
+                        WebkitBoxOrient: 'vertical',
+                        WebkitLineClamp: 2,
+                      }}
+                    >
+                      "{liveUserText}"
+                    </Typography>
+                  </Fade>
+                </Box>
+              </Fade>
+
+            </Box>
+          </Box>
 
           {/* Bottom Controls */}
           <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', gap: 4, alignItems: 'center', zIndex: 10 }}>

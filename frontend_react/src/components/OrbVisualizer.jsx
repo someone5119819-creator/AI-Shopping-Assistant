@@ -27,7 +27,7 @@ const OrbVisualizer = ({ isListening, isSpeaking, isThinking, analyser }) => {
         // Orb State
         let orb = {
             radius: 50,
-            color: '100, 100, 100', // Default Gray
+            color: '150, 150, 150', // Gray for Light Theme
             phase: 0
         };
 
@@ -49,20 +49,19 @@ const OrbVisualizer = ({ isListening, isSpeaking, isThinking, analyser }) => {
             }
 
             // Update Orb Physics
+            // Uniform Color (Dark Gray for visibility on Light Theme)
+            orb.color = '100, 100, 100';
+
             if (isThinking) {
-                orb.color = '255, 255, 255';
                 orb.radius = 40 + Math.sin(Date.now() / 100) * 5;
             } else if (isListening) {
-                orb.color = '255, 255, 255';
                 const targetRadius = 60 + (frequency / 3);
                 orb.radius += (targetRadius - orb.radius) * 0.2;
             } else if (isSpeaking) {
-                orb.color = '208, 188, 255'; // Primary Purple
                 const targetRadius = 50 + (frequency / 2);
                 orb.radius += (targetRadius - orb.radius) * 0.2;
             } else {
                 // Idle
-                orb.color = '50, 50, 50';
                 orb.radius = 30 + Math.sin(Date.now() / 2000) * 2;
             }
 
@@ -78,7 +77,7 @@ const OrbVisualizer = ({ isListening, isSpeaking, isThinking, analyser }) => {
             ctx.fill();
 
             // Draw Core
-            ctx.fillStyle = `rgba(255, 255, 255, ${isThinking ? 0.9 : 0.8})`;
+            ctx.fillStyle = `rgba(${orb.color}, ${isThinking ? 0.9 : 0.8})`;
             ctx.beginPath();
             ctx.arc(centerX, centerY, isThinking ? 10 : orb.radius * 0.3, 0, Math.PI * 2);
             ctx.fill();
