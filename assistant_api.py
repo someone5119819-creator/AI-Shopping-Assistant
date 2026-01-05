@@ -21,6 +21,113 @@ CORS(app)
 # Store conversation sessions (in-memory for MVP - use Redis in production)
 sessions = {}
 
+# Shopify Configuration
+SHOPIFY_STORE = os.getenv('SHOPIFY_STORE_URL')
+SHOPIFY_TOKEN = os.getenv('SHOPIFY_ACCESS_TOKEN')
+SHOPIFY_VERSION = os.getenv('SHOPIFY_API_VERSION')
+
+def create_draft_order(email, shipping_address, line_items):
+    """Create a Shopify draft order to calculate totals + tax"""
+    try:
+        url = f"https://{SHOPIFY_STORE}/admin/api/{SHOPIFY_VERSION}/draft_orders.json"
+        headers = {
+            "X-Shopify-Access-Token": SHOPIFY_TOKEN,
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "draft_order": {
+                "email": email,
+                "shipping_address": shipping_address,
+                "billing_address": shipping_address,  # Same as shipping for now
+                "line_items": line_items,
+                "shipping_line": {
+                    "title": "Standard Shipping",
+                    "price": "0.00"
+                },
+                "currency": "INR"
+            }
+        }
+        
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        
+        if response.status_code == 201:
+            draft_order = response.json()['draft_order']
+            print(f"[SHOPIFY] Draft order created: {draft_order['id']}")
+            return draft_order
+        else:
+            print(f"[SHOPIFY ERROR] Draft order failed: {response.status_code} - {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"Error creating draft order: {e}")
+        return None
+
+def complete_draft_order(draft_order_id):
+    """Complete a draft order (COD payment)"""
+    try:
+        url = f"https://{SHOPIFY_STORE}/admin/api/{SHOPIFY_VERSION}/draft_orders/{draft_order_id}/complete.json?payment_pending=true"
+        headers = {
+            "X-Shopify-Access-Token": SHOPIFY_TOKEN,
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.put(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            order = response.json()['draft_order']
+            print(f"[SHOPIFY] Order completed: {order['order_id']}")
+            return order
+        else:
+            print(f"[SHOPIFY ERROR] Complete order failed: {response.status_code} - {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"Error completing order: {e}")
+        return None
+
+def extract_variant_ids(products):
+    """Extract variant IDs from product list for Shopify line items"""
+    line_items = []
+    for product in products:
+        # Assume first variant for simplicity
+        if 'variants' in product and len(product['variants']) > 0:
+            variant = product['variants'][0]
+            line_items.append({
+                "variant_id": variant['id'],
+                "quantity": 1
+            })
+    return line_items
+
+def get_customer_by_email(email):
+    """Lookup existing Shopify customer by email"""
+    try:
+        url = f"https://{SHOPIFY_STORE}/admin/api/2025-01/customers/search.json?query=email:{email}"
+        headers = {
+            "X-Shopify-Access-Token": SHOPIFY_TOKEN,
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            customers = response.json().get('customers', [])
+            if customers:
+                customer = customers[0]
+                print(f"[SHOPIFY] Found customer: {customer.get('email')}")  
+                return customer
+            else:
+                print(f"[SHOPIFY] No customer found for email: {email}")
+                return None
+        else:
+            print(f"[SHOPIFY ERROR] Customer search failed: {response.status_code}")
+            return None
+            
+    except Exception as e:
+        print(f"Error searching for customer: {e}")
+        return None
+
+
 # IRONCLAD GUARDRAIL: Prohibited words in "Investigator" phase
 BRAND_WATCHLIST = [
     "canon", "sony", "nikon", "fujifilm", "panasonic", "olympus", "leica", "pentax",
@@ -56,14 +163,20 @@ CORE GUARDRAILS (HARDCODED RULES):
    - If the context is empty, you must say: "I don't have that specific item in stock Right now."
 
 STATE 1: INVESTIGATOR (Default State) (Never show this to user)
-- **Goal**: Understand the user's specific Use Case (e.g., "vlogging", "studio photography", "travel").
+- **Goal**: Understand the user's specific Use Case through NATURAL conversation.
 - **Constraints**:
-  - NEVER mention specific product names or brands. even if user asks for it. (e.g., DO NOT say "GoPro", "Sony", "Canon").
+  - NEVER mention specific product names or brands (e.g., DO NOT say "GoPro", "Sony", "Canon").
   - DO NOT say "I can recommend..." yet.
-  - ASK 1-2 clarifying questions to narrow down the need.
-  - Example Question: "Is this for outdoor adventure or indoor studio use?" (Good - generic)
-  - Bad Question: "Do you want a GoPro or a Canon?" (BAD - specific brands)
-- **Exit Condition**: When specific needs are clear -> ACTION: SEARCH.
+  - ASK 1-2 clarifying questions that ADAPT to what the user has already told you.
+  - **Be CONVERSATIONAL**: Don't use rigid templates. Listen to what they said and ask a natural follow-up.
+  - **Examples of ADAPTIVE questions**:
+    * If user says "camera" → Ask "What will you be shooting?" (not "indoor or outdoor?")
+    * If user says "vlogging" → Ask "Are you recording yourself or your surroundings?"
+    * If user says "travel" → Ask "Do you need something compact or are you okay with larger gear?"
+  - **Bad**: Asking the same "indoor/outdoor" question to everyone
+  - **Good**: Tailoring questions based on what they've shared
+- **CRITICAL RULE - MAX 2 QUESTIONS**: After 2 questions, MUST search with your best guess. No endless questions.
+- **Exit Condition**: When needs are clear OR after 2 questions → ACTION: SEARCH.
 
 STATE 2: SEARCHER  (Never show this to user)
 - **Goal**: Find products matching the CONFIRMED requirements.
@@ -78,6 +191,25 @@ STATE 3: PRESENTER (Only active when System Context has results)  (Never show th
   - NEVER Hallucinate. If it's not in the context, it doesn't exist.
   - Select ONLY top 1-2 best matches.
 
+STATE 4: CHECKOUT (When user wants to purchase)  (Never show this to user)
+- **Trigger**: User says "I want to buy", "purchase these", "order this", etc.
+- **Goal**: Collect shipping details CONVERSATIONALLY, one field at a time.
+- **Process**:
+  1. Ask for email address
+  2. Ask for full name (first + last together is fine)
+  3. Ask ONLY for street address (e.g., "123 Main Street, Apartment 5") - DO NOT ask for city, state, or zip
+  4. Ask for phone number
+  5. After all details → OUTPUT: {\"action\": \"create_order\", \"message\": \"Creating your order...\"}
+- **CRITICAL**: 
+  - Ask ONE question at a time. Be natural and conversational.
+  - DO NOT ask for city, state, or zip code - we auto-detect these.
+  - Only ask for street address (not full address).
+- **Example Flow**:
+  - \"Great! I'll help you complete the order. What's your email?\"
+  - \"Perfect. What's your full name?\"
+  - \"What's your street address? Include apartment or unit number if any.\"
+  - \"And your phone number?\"
+
 FORBIDDEN TOPICS (Immediate Refusal):  (Never show this to user)
 - Software, Code, Computers, General Electronics.
 - Response: "I specialize strictly in camera and audio gear."
@@ -89,14 +221,26 @@ SECURITY & FORMATTING PROTOCOLS (HIGHEST PRIORITY):
    - **REQUIRED**: Natural, fluid spoken English. Write EXACTLY what should be read aloud by a Text-to-Speech engine.
    - **Bad**: "Here are the options: * Sony A7 * Canon R5"
    - **Good**: "I found two great options for you. The Sony A7 which is fantastic for low light, and the Canon R5 which acts as a great all-rounder."
-3. **TONE**: Warm, professional, concise, and expert.
-4. **NO ROBOTIC TEMPLATES**: Do not say "Based on your requirements". Just speak naturally.
+3. **BREVITY** (Critical - Voice Interface):
+   - Keep responses SHORT - ideally 1-2 sentences, max 3 sentences.
+   - This is a VOICE interface - long responses frustrate users.
+   - Get to the point quickly. No rambling.
+   - **Bad**: "Well, I'd be happy to help you find the perfect camera for your needs. Based on what you've told me, I think there are several options that might work well for your specific use case. Let me tell you about..."
+   - **Good**: "Perfect! I found the Sony A7 III for $1,999. It's excellent for low light photography."
+4. **TONE**: Warm, professional, concise, and expert.
+5. **NO ROBOTIC TEMPLATES**: Do not say "Based on your requirements". Just speak naturally.
+
 
 FORMAT FOR ACTIONS:  (Never show this to user)
 Search: {"action": "search", "query": "generic keywords", "message": "Checking our inventory..."}
+Vision: {"action": "open_camera", "message": "Sure, I can take a look. Please show m
+TRIGGER RULES:
+- If user says "search", "find", "looking for" -> OUTPUT SEARCH ACTION.
+- If user says "camera", "show you", "see this", "look at" -> OUTPUT VISION ACTION.
 
 System Context (Search Results):
 """
+
 
 def search_products(query, limit=5):
     """Search products using the existing RAG API"""
@@ -123,6 +267,108 @@ def search_products(query, limit=5):
         print(f"Error searching products: {e}")
         return []
 
+def check_product_confidence(user_message):
+    """
+    Check if user message matches a specific product with high confidence.
+    Returns (product_dict, confidence_score) or (None, 0.0)
+    """
+    try:
+        # Search with user's exact message
+        results = search_products(user_message, limit=3)
+        
+        if not results or len(results) == 0:
+            return None, 0.0
+        
+        # Get top result and its score (RAG API should provide this)
+        top_result = results[0]
+        top_score = top_result.get('score', 0.5)  # Default 0.5 if not provided
+        
+        # Get second result score for gap calculation
+        second_score = results[1].get('score', 0.0) if len(results) > 1 else 0.0
+        
+        # Boost confidence if specific brands mentioned
+        brand_boost = 0.15 if detect_brand_leak(user_message) else 0.0
+        
+        # Calculate final confidence
+        base_confidence = min(top_score, 1.0)  # Cap at 1.0
+        confidence = base_confidence + brand_boost
+        
+        # Reduce confidence if gap between top 2 results is small (ambiguous)
+        score_gap = top_score - second_score
+        if score_gap < 0.2:
+            confidence *= 0.6  # Significant penalty for ambiguity
+        
+        # Boost if message contains specific product indicators
+        specific_indicators = ['model', 'iii', 'pro', 'max', 'plus', 'ultra']
+        if any(indicator in user_message.lower() for indicator in specific_indicators):
+            confidence = min(confidence + 0.1, 1.0)
+        
+        print(f"[CONFIDENCE CHECK] Query: '{user_message}' | Top: {top_result.get('title', 'N/A')} | Confidence: {confidence:.2f}")
+        
+        return top_result, confidence
+        
+    except Exception as e:
+        print(f"Error in confidence check: {e}")
+        return None, 0.0
+
+
+def ai_select_products(user_request, products, max_products=2):
+    """
+    Use AI to intelligently select the best products from search results.
+    Returns: filtered list of selected products (1-2 items)
+    """
+    if not products or len(products) == 0:
+        return []
+    
+    # If only 1-2 products, return as-is
+    if len(products) <= max_products:
+        return products
+    
+    try:
+        # Build product list for AI to evaluate
+        product_titles = [p.get('title', 'Unknown') for p in products]
+        product_list = "\n".join([f"{i+1}. {title}" for i, title in enumerate(product_titles)])
+        
+        prompt = f"""You are a product recommendation expert. The user asked: "{user_request}"
+
+From this list, select the top {max_products} products that BEST match the user's request. Consider relevance, features, and user intent.
+
+Products:
+{product_list}
+
+Output ONLY a JSON array with the exact titles: ["title1", "title2"]
+Do not add any explanation, just the JSON array."""
+
+        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        response = model.generate_content(prompt)
+        
+        # Parse AI response
+        response_text = response.text.strip()
+        # Handle if AI wrapped in code blocks
+        if '```' in response_text:
+            response_text = response_text.split('```')[1].replace('json', '').strip()
+        
+        selected_titles = json.loads(response_text)
+        
+        # Filter products based on AI selection
+        filtered = []
+        for p in products:
+            if p.get('title') in selected_titles:
+                filtered.append(p)
+                if len(filtered) >= max_products:
+                    break
+        
+        print(f"[AI SELECTION] From {len(products)} products, selected {len(filtered)}: {[p.get('title') for p in filtered]}")
+        return filtered if filtered else products[:max_products]  # Fallback to first N if parsing fails
+        
+    except Exception as e:
+        print(f"Error in AI product selection: {e}")
+        # Fallback: return first max_products
+        return products[:max_products]
+
+
+
 
 def generate_gemini_response(messages):
     """Generate response using Google Gemini Pro"""
@@ -134,7 +380,7 @@ def generate_gemini_response(messages):
         
         # Create model with system instruction
         model = genai.GenerativeModel(
-            model_name="gemini-3-pro-preview",
+            model_name="gemini-2.5-flash",
             system_instruction=system_instruction
         )
         
@@ -192,10 +438,16 @@ def chat():
             sessions[session_id] = {
                 'history': [],
                 'created_at': datetime.now().isoformat(),
-                'stage': 'investigator' # Default stage
+                'stage': 'investigator', # Default stage
+                'turn_count': 0,  # Track conversation turns
+                'selected_products': []  # Track user's product selections
             }
         
         session = sessions[session_id]
+        
+        # Increment turn counter (counts user messages in investigator stage)
+        if session.get('stage') == 'investigator':
+            session['turn_count'] = session.get('turn_count', 0) + 1
         
         # Build conversation context for Ollama
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -207,19 +459,85 @@ def chat():
         # Add current user message
         messages.append({"role": "user", "content": user_message})
         
+        # FORCE SEARCH after 3 turns if still in investigator stage
+        force_search = False
+        if session.get('stage') == 'investigator' and session.get('turn_count', 0) >= 3:
+            print(f"[FORCE SEARCH] Turn {session['turn_count']} - Triggering search with best guess")
+            force_search = True
+        
+        # SMART PRODUCT DETECTION: Check if user mentioned a specific product
+        # This allows instant results for direct requests like "I want Sony A7 III"
+        product_match, confidence = check_product_confidence(user_message)
+        instant_search_triggered = False
+        products = None
+        
+        if confidence > 0.75 and session.get('stage') == 'investigator':
+            # High confidence match found! Skip investigator phase
+            print(f"[INSTANT SEARCH] Confidence {confidence:.2f} - Showing product directly")
+            
+            session['stage'] = 'presenter'
+            session['turn_count'] = 0  # Reset counter
+            instant_search_triggered = True
+            
+            # Get full product list
+            all_products = search_products(user_message, limit=5)
+            
+            # AI selects best 1-2 products
+            products = ai_select_products(user_message, all_products, max_products=2)
+            
+            # Inject context so AI knows product was already found
+            product_context = f"[PRE-SEARCH MATCH FOUND]\nUser requested: {user_message}\nTop match: {product_match.get('title', 'Product')}\n\nSystem Context: Found the following products:\n"
+            for p in products:
+                price = p.get('variants', [{}])[0].get('price', 'N/A')
+                product_context += f"- {p.get('title')} (Price: {price})\n"
+            
+            messages.append({"role": "system", "content": product_context})
+            session['history'].append({'role': 'system', 'content': product_context})
+        
+        elif force_search:
+            # FORCE SEARCH: User has had 3 turns without finding a product
+            # Search with best guess based on conversation so far
+            print(f"[FORCE SEARCH] Executing search with conversation context")
+            
+            session['stage'] = 'presenter'
+            session['turn_count'] = 0  # Reset counter
+            instant_search_triggered = True  # Treat like instant search
+            
+            # Build search query from recent conversation
+            recent_messages = [msg['content'] for msg in session['history'][-4:] if msg['role'] == 'user']
+            search_query = user_message if not recent_messages else ' '.join(recent_messages + [user_message])
+            
+            # Get products
+            all_products = search_products(search_query, limit=5)
+            products = ai_select_products(search_query, all_products, max_products=2)
+            
+            # Inject context
+            product_context = f"[AUTO-SEARCH TRIGGERED - User needs suggestions]\nBased on conversation: {search_query}\n\nSystem Context: Found the following products:\n"
+            for p in products:
+                price = p.get('variants', [{}])[0].get('price', 'N/A')
+                product_context += f"- {p.get('title')} (Price: {price})\n"
+            
+            messages.append({"role": "system", "content": product_context})
+            session['history'].append({'role': 'system', 'content': product_context})
+        
         # Generate AI response
         ai_message = generate_gemini_response(messages)
         
         # IRONCLAD GUARDRAIL CHECK
         # If we are in 'investigator' stage and AI mentions a brand, BLOCK IT.
-        if session.get('stage') == 'investigator':
+        # EXCEPTION: If the AI is outputting an ACTION (Search/Vision), allow it.
+        if session.get('stage') == 'investigator' and '{"action":' not in ai_message:
             if detect_brand_leak(ai_message):
                 print(f"GUARDRAIL TRIGGERED: Blocked brand leak in '{ai_message}'")
                 ai_message = "I can certainly look into equipment options for you. To give you the best recommendation, could you tell me a bit more about your specific use case? For example, are you shooting indoors or outdoors?"
 
+
         # Check if AI wants to search for products or place order
-        products = None
+        # Note: products may already be set by instant search
+        if not instant_search_triggered:
+            products = None
         order_status = None
+
         
         if '{"action":' in ai_message and '}' in ai_message:
             try:
@@ -235,7 +553,10 @@ def chat():
                     session['stage'] = 'presenter'
                     
                     search_query = action_data.get('query', user_message)
-                    products = search_products(search_query)
+                    all_products = search_products(search_query, limit=5)
+                    
+                    # AI selects best 1-2 products
+                    products = ai_select_products(search_query, all_products, max_products=2)
                     ai_message = action_data.get('message', 'Let me search for that...')
                     
                     # INJECT CONTEXT: Add found products to history so AI "remembers" them
@@ -296,6 +617,12 @@ def chat():
                     }
                     ai_message = action_data.get('message', 'Placing your order now...')
                     
+                elif action == 'open_camera':
+                    # CAMERA TRIGGERED
+                    ai_message = action_data.get('message', 'Sure, showing you the camera.')
+                    # We need to pass this action to frontend
+                    # We'll use a specific key in response_data later
+                    
             except json.JSONDecodeError:
                 pass  # If JSON parsing fails, just continue with the text response
         
@@ -310,6 +637,10 @@ def chat():
             'timestamp': datetime.now().isoformat()
         }
         
+        # Pass action if present
+        if '{"action": "open_camera"' in ai_message or (locals().get('action') == 'open_camera'):
+             response_data['action'] = 'open_camera'
+        
         if products:
             response_data['products'] = products
             
@@ -323,6 +654,57 @@ def chat():
     except Exception as e:
         print(f"Error in chat endpoint: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/assistant/select_product', methods=['POST'])
+def select_product():
+    """Handle product selection for purchase tracking"""
+    try:
+        data = request.json
+        session_id = data.get('session_id', 'default')
+        product_id = data.get('product_id')
+        action = data.get('action', 'add')  # 'add' or 'remove'
+        
+        if not product_id:
+            return jsonify({'error': 'Product ID is required'}), 400
+        
+        # Get or create session
+        if session_id not in sessions:
+            sessions[session_id] = {
+                'history': [],
+                'created_at': datetime.now().isoformat(),
+                'stage': 'investigator',
+                'turn_count': 0,
+                'selected_products': []
+            }
+        
+        session = sessions[session_id]
+        
+        # Initialize selected_products if missing (for old sessions)
+        if 'selected_products' not in session:
+            session['selected_products'] = []
+        
+        # Handle action
+        if action == 'add':
+            # Add product if not already selected
+            if product_id not in session['selected_products']:
+                session['selected_products'].append(product_id)
+                print(f"[SELECTION] Added product {product_id} to session {session_id}")
+        elif action == 'remove':
+            # Remove product if present
+            if product_id in session['selected_products']:
+                session['selected_products'].remove(product_id)
+                print(f"[SELECTION] Removed product {product_id} from session {session_id}")
+        
+        return jsonify({
+            'status': 'success',
+            'selected_products': session['selected_products'],
+            'count': len(session['selected_products'])
+        })
+        
+    except Exception as e:
+        print(f"Error in select_product endpoint: {e}")
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/assistant/session/new', methods=['POST'])
 def new_session():
@@ -383,6 +765,56 @@ def tts():
             
     except Exception as e:
         print(f"Error in TTS endpoint: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/assistant/vision', methods=['POST'])
+def vision_analysis():
+    """Analyze image using Gemini Vision Pro"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+            
+        # Read image data
+        image_data = file.read()
+        
+        # Configure Gemini
+        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+        model = genai.GenerativeModel('gemini-2.5-flash') # Upgrade to Gemini 2.5 Flash
+        
+        # Prompt for analysis
+        prompt = "Identify this product type concisely (e.g., 'Sony A7 camera', 'Rode microphone'). Return ONLY the name of the product."
+        
+        # Generate content
+        import PIL.Image
+        import io
+        image = PIL.Image.open(io.BytesIO(image_data))
+        
+        response = model.generate_content([prompt, image])
+        text_response = response.text.strip()
+        
+        # Formulate confirmation message
+        message = f"I see what looks like a {text_response}. Is this the product you are looking for?"
+        
+        # UPDATE HISTORY: Inject this interaction so the next "Yes" from user has context
+        # We need the session_id from the request (it was sent in FormData)
+        session_id = request.form.get('session_id', 'default')
+        if session_id in sessions:
+            # We treat the image analysis as a "User" showing something and "AI" responding
+            sessions[session_id]['history'].append({'role': 'user', 'content': f"[User showed an image of {text_response}]"})
+            sessions[session_id]['history'].append({'role': 'assistant', 'content': message})
+
+        return jsonify({
+            'message': message,
+             # Return empty products to prevent auto-display
+            'products': []
+        })
+
+    except Exception as e:
+        print(f"Error in Vision endpoint: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/assistant/health', methods=['GET'])
