@@ -386,7 +386,11 @@ def tts():
         voice_id = os.getenv('ELEVENLABS_VOICE_ID', '21m00Tcm4TlvDq8ikWAM') # Default to Rachel
         
         if not api_key:
+             print("Error: ElevenLabs API key is missing")
              return jsonify({'error': 'ElevenLabs API key not configured'}), 500
+
+        api_key = api_key.strip()
+        print(f"Using ElevenLabs Key: {api_key[:4]}... (Length: {len(api_key)})")
 
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
         
@@ -410,6 +414,7 @@ def tts():
         if response.status_code == 200:
             return response.content, 200, {'Content-Type': 'audio/mpeg'}
         else:
+            print(f"ElevenLabs API Error: {response.status_code} - {response.text}")
             return jsonify({'error': f"ElevenLabs API error: {response.text}"}), response.status_code
             
     except Exception as e:
