@@ -19,6 +19,10 @@ export const useAssistant = () => {
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [selectedProducts, setSelectedProducts] = useState([]);
 
+    // Simple cart state
+    const [cartItems, setCartItems] = useState([]);
+    const [cartCount, setCartCount] = useState(0);
+
     // ... existing refs ...
     const audioContextRef = useRef(null);
     const analyserRef = useRef(null);
@@ -331,6 +335,59 @@ export const useAssistant = () => {
         }
     };
 
+    // ===== SIMPLE CART FUNCTIONS =====
+    const addToCart = async (product) => {
+        if (!sessionId) return;
+        try {
+            const res = await fetch(`${API_BASE}/cart/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    id: product.id,
+                    title: product.title,
+                    image: product.image
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setCartCount(data.cart_count);
+            }
+        } catch (err) {
+            console.error('Cart add error:', err);
+        }
+    };
+
+    const viewCart = async () => {
+        if (!sessionId) return;
+        try {
+            const res = await fetch(`${API_BASE}/cart?session_id=${sessionId}`);
+            const data = await res.json();
+            setCartItems(data.items || []);
+            setCartCount(data.count || 0);
+        } catch (err) {
+            console.error('Cart view error:', err);
+        }
+    };
+
+    const clearCart = async () => {
+        if (!sessionId) return;
+        try {
+            const res = await fetch(`${API_BASE}/cart/clear`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setCartItems([]);
+                setCartCount(0);
+            }
+        } catch (err) {
+            console.error('Cart clear error:', err);
+        }
+    };
+
     return {
         sessionId,
         messages,
@@ -341,11 +398,16 @@ export const useAssistant = () => {
         status,
         liveUserText,
         liveAiText,
-        isCameraOpen,       // Export
-        setIsCameraOpen,    // Export
-        analyzeImage,       // Export
-        selectedProducts,   // Export
-        selectProduct,      // Export
+        isCameraOpen,
+        setIsCameraOpen,
+        analyzeImage,
+        selectedProducts,
+        selectProduct,
+        cartItems,
+        cartCount,
+        addToCart,
+        viewCart,
+        clearCart,
         analyser: analyserRef.current,
         startListening,
         stopListening,

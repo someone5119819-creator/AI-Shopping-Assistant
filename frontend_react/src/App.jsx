@@ -3,6 +3,7 @@ import { ThemeProvider, createTheme, CssBaseline, Box, IconButton, Fab, TextFiel
 import { Mic, Send, Keyboard, Close, MoreVert, CallEnd, ShoppingCart, CameraAlt, FiberManualRecord } from '@mui/icons-material';
 import OrbVisualizer from './components/OrbVisualizer';
 import { useAssistant } from './hooks/useAssistant';
+import CartModal from './components/CartModal';
 
 // Light Theme Configuration
 const lightTheme = createTheme({
@@ -35,11 +36,13 @@ function App() {
   const {
     status, isListening, isSpeaking, isThinking, analyser, products,
     liveUserText, liveAiText, isCameraOpen, setIsCameraOpen, analyzeImage,
+    cartItems, cartCount, addToCart, viewCart, clearCart,
     startListening, stopListening, sendMessage
   } = useAssistant();
 
   const [showInput, setShowInput] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -136,16 +139,23 @@ function App() {
           <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
             <IconButton onClick={() => window.close()}><Close /></IconButton>
             <Typography variant="subtitle1" sx={{ color: 'text.secondary', fontWeight: 500 }}>AI Assistant</Typography>
-            <Chip
-              label={status}
-              size="small"
-              sx={{
-                bgcolor: isListening || isThinking || isSpeaking ? 'rgba(98, 0, 238, 0.08)' : '#f5f5f5',
-                color: isListening || isThinking || isSpeaking ? 'primary.main' : 'text.secondary',
-                fontWeight: 600,
-                border: 'none'
-              }}
-            />
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <IconButton onClick={async () => { await viewCart(); setIsCartOpen(true); }}>
+                <Badge badgeContent={cartCount} color="primary">
+                  <ShoppingCart />
+                </Badge>
+              </IconButton>
+              <Chip
+                label={status}
+                size="small"
+                sx={{
+                  bgcolor: isListening || isThinking || isSpeaking ? 'rgba(98, 0, 238, 0.08)' : '#f5f5f5',
+                  color: isListening || isThinking || isSpeaking ? 'primary.main' : 'text.secondary',
+                  fontWeight: 600,
+                  border: 'none'
+                }}
+              />
+            </Box>
           </Box>
 
           {/* Visualizer Area */}
@@ -275,7 +285,17 @@ function App() {
                           ₹{p.metadata.price}
                         </Typography>
                       </CardContent>
-                      <IconButton size="small" color="primary"><ShoppingCart fontSize="small" /></IconButton>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => addToCart({
+                          id: p.metadata.product_id,
+                          title: p.metadata.title,
+                          image: p.metadata.image_url
+                        })}
+                      >
+                        <ShoppingCart fontSize="small" />
+                      </IconButton>
                     </Card>
                   ))}
                 </Box>
@@ -388,6 +408,18 @@ function App() {
           </Slide>
 
         </Paper>
+
+        {/* Simple Cart Modal */}
+        <CartModal
+          open={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          cartItems={cartItems}
+          cartCount={cartCount}
+          onClear={async () => {
+            await clearCart();
+            setIsCartOpen(false);
+          }}
+        />
       </Box>
     </ThemeProvider>
   );

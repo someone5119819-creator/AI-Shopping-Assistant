@@ -712,6 +712,7 @@ def new_session():
     session_id = f"session_{datetime.now().timestamp()}"
     sessions[session_id] = {
         'history': [],
+        'cart': [],
         'created_at': datetime.now().isoformat()
     }
     return jsonify({'session_id': session_id})
@@ -722,6 +723,69 @@ def end_session(session_id):
     if session_id in sessions:
         del sessions[session_id]
     return jsonify({'status': 'success'})
+
+# ===== SIMPLE CART ENDPOINTS =====
+
+@app.route('/api/assistant/cart/add', methods=['POST'])
+def add_to_cart():
+    """Add item to cart - minimal version"""
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        
+        if not session_id or session_id not in sessions:
+            return jsonify({'error': 'Invalid session'}), 400
+        
+        # Simply append item to cart
+        item = {
+            'title': data.get('title'),
+            'image': data.get('image'),
+            'id': data.get('id')
+        }
+        
+        sessions[session_id]['cart'].append(item)
+        cart_count = len(sessions[session_id]['cart'])
+        
+        return jsonify({'success': True, 'cart_count': cart_count})
+    except Exception as e:
+        print(f"[CART ERROR] add_to_cart: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/assistant/cart', methods=['GET'])
+def get_cart():
+    """Get cart contents - minimal version"""
+    try:
+        session_id = request.args.get('session_id')
+        
+        if not session_id or session_id not in sessions:
+            return jsonify({'error': 'Invalid session'}), 400
+        
+        cart = sessions[session_id].get('cart', [])
+        
+        return jsonify({
+            'items': cart,
+            'count': len(cart)
+        })
+    except Exception as e:
+        print(f"[CART ERROR] get_cart: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/assistant/cart/clear', methods=['POST'])
+def clear_cart():
+    """Clear cart - minimal version"""
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        
+        if not session_id or session_id not in sessions:
+            return jsonify({'error': 'Invalid session'}), 400
+        
+        sessions[session_id]['cart'] = []
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"[CART ERROR] clear_cart: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/assistant/tts', methods=['POST'])
 def tts():
