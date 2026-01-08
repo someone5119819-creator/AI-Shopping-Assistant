@@ -4,6 +4,7 @@ import { Mic, Send, Keyboard, Close, MoreVert, CallEnd, ShoppingCart, CameraAlt,
 import OrbVisualizer from './components/OrbVisualizer';
 import { useAssistant } from './hooks/useAssistant';
 import CartModal from './components/CartModal';
+import InlineCheckout from './components/checkout/InlineCheckout';
 
 // Light Theme Configuration
 const lightTheme = createTheme({
@@ -37,6 +38,7 @@ function App() {
     status, isListening, isSpeaking, isThinking, analyser, products,
     liveUserText, liveAiText, isCameraOpen, setIsCameraOpen, analyzeImage,
     cartItems, cartCount, addToCart, viewCart, clearCart,
+    checkoutStage, setCheckoutStage,
     startListening, stopListening, sendMessage
   } = useAssistant();
 
@@ -248,8 +250,8 @@ function App() {
                 </Box>
               </Fade>
 
-              {/* Product Recommendations View */}
-              <Fade in={products.length > 0} unmountOnExit>
+              {/* Checkout or Product Recommendations View */}
+              <Fade in={checkoutStage !== null || products.length > 0} unmountOnExit>
                 <Box sx={{
                   position: 'absolute',
                   top: 0, left: 0, right: 0, bottom: 0,
@@ -260,49 +262,97 @@ function App() {
                   msOverflowStyle: 'none',
                   scrollbarWidth: 'none',
                 }}>
-
-                  {products.map((p, i) => (
-                    <Card key={i} elevation={0} sx={{
-                      mb: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      p: 2,
-                      bgcolor: '#ffffff',
-                      border: '1px solid rgba(0,0,0,0.05)',
-                      borderRadius: 2
-                    }}>
-                      <CardMedia
-                        component="img"
-                        sx={{ width: 70, height: 70, borderRadius: 2 }}
-                        image={p.metadata.image_url}
-                        alt={p.metadata.title}
-                      />
-                      <CardContent sx={{ flex: 1, py: 0, px: 2, '&:last-child': { pb: 0 } }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600, lineHeight: 1.2, mb: 0.5 }}>
-                          {p.metadata.title}
-                        </Typography>
-                        <Typography variant="body2" color="primary" fontWeight="bold">
-                          ₹{p.metadata.price}
-                        </Typography>
-                      </CardContent>
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => addToCart({
-                          id: p.metadata.product_id,
-                          title: p.metadata.title,
-                          image: p.metadata.image_url
-                        })}
-                      >
-                        <ShoppingCart fontSize="small" />
-                      </IconButton>
-                    </Card>
-                  ))}
+                  {checkoutStage ? (
+                    <InlineCheckout
+                      stage={checkoutStage}
+                      cartItems={cartItems}
+                      onNext={(stage, data) => setCheckoutStage(stage)}
+                      onComplete={(orderData) => {
+                        setCheckoutStage('success');
+                        setTimeout(() => clearCart(), 2000);
+                      }}
+                      onCancel={() => setCheckoutStage(null)}
+                    />
+                  ) : (
+                    products.map((p, i) => (
+                      <Card key={i} elevation={0} sx={{
+                        mb: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        p: 2,
+                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 253, 250, 0.95) 100%)',
+                        backdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(167, 243, 208, 0.3)',
+                        borderRadius: 3,
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.1), 0 4px 6px -2px rgba(16, 185, 129, 0.05)',
+                          border: '1px solid rgba(167, 243, 208, 0.5)',
+                        }
+                      }}>
+                        <CardMedia
+                          component="img"
+                          sx={{
+                            width: 70,
+                            height: 70,
+                            borderRadius: 2,
+                            objectFit: 'cover',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+                          }}
+                          image={p.metadata.image_url}
+                          alt={p.metadata.title}
+                        />
+                        <CardContent sx={{ flex: 1, py: 0, px: 2.5, '&:last-child': { pb: 0 } }}>
+                          <Typography variant="subtitle2" sx={{
+                            fontWeight: 600,
+                            lineHeight: 1.3,
+                            mb: 0.75,
+                            fontSize: '15px',
+                            color: '#1F2937',
+                            letterSpacing: '-0.01em'
+                          }}>
+                            {p.metadata.title}
+                          </Typography>
+                          <Typography variant="body2" sx={{
+                            color: '#059669',
+                            fontWeight: 700,
+                            fontSize: '16px',
+                            letterSpacing: '-0.02em'
+                          }}>
+                            ₹{p.metadata.price}
+                          </Typography>
+                        </CardContent>
+                        <IconButton
+                          size="small"
+                          onClick={() => addToCart({
+                            id: p.metadata.product_id,
+                            title: p.metadata.title,
+                            image: p.metadata.image_url,
+                            price: p.metadata.price
+                          })}
+                          sx={{
+                            color: '#059669',
+                            bgcolor: 'rgba(167, 243, 208, 0.2)',
+                            '&:hover': {
+                              bgcolor: 'rgba(167, 243, 208, 0.35)',
+                              transform: 'scale(1.05)'
+                            },
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <ShoppingCart fontSize="small" />
+                        </IconButton>
+                      </Card>
+                    ))
+                  )}
                 </Box>
               </Fade>
 
               {/* Live Transcript View (Default) */}
-              <Fade in={products.length === 0}>
+              <Fade in={!checkoutStage && products.length === 0}>
                 <Box sx={{
                   flex: 1,
                   display: 'flex',

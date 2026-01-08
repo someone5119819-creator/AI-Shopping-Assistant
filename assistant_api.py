@@ -194,12 +194,13 @@ STATE 3: PRESENTER (Only active when System Context has results)  (Never show th
 STATE 4: CHECKOUT (When user wants to purchase)  (Never show this to user)
 - **Trigger**: User says "I want to buy", "purchase these", "order this", etc.
 - **Goal**: Collect shipping details CONVERSATIONALLY, one field at a time.
-- **Process**:
+- **Process**: Add the product to cart, show the cart
+
   1. Ask for email address
   2. Ask for full name (first + last together is fine)
-  3. Ask ONLY for street address (e.g., "123 Main Street, Apartment 5") - DO NOT ask for city, state, or zip
+  3. Ask ONLY for street address
   4. Ask for phone number
-  5. After all details → OUTPUT: {\"action\": \"create_order\", \"message\": \"Creating your order...\"}
+  5. After all details trigger place order
 - **CRITICAL**: 
   - Ask ONE question at a time. Be natural and conversational.
   - DO NOT ask for city, state, or zip code - we auto-detect these.
@@ -230,13 +231,15 @@ SECURITY & FORMATTING PROTOCOLS (HIGHEST PRIORITY):
 4. **TONE**: Warm, professional, concise, and expert.
 5. **NO ROBOTIC TEMPLATES**: Do not say "Based on your requirements". Just speak naturally.
 
-
 FORMAT FOR ACTIONS:  (Never show this to user)
 Search: {"action": "search", "query": "generic keywords", "message": "Checking our inventory..."}
-Vision: {"action": "open_camera", "message": "Sure, I can take a look. Please show m
+Vision: {"action": "open_camera", "message": "Sure, I can take a look. Please show me what you have."}
+Checkout: {"action": "start_checkout", "message": "Let me help you complete your order..."}
+
 TRIGGER RULES:
 - If user says "search", "find", "looking for" -> OUTPUT SEARCH ACTION.
 - If user says "camera", "show you", "see this", "look at" -> OUTPUT VISION ACTION.
+- If user says "checkout", "buy this", "I want to purchase", "complete order", "place order" -> OUTPUT CHECKOUT ACTION.
 
 System Context (Search Results):
 """
@@ -640,6 +643,9 @@ def chat():
         # Pass action if present
         if '{"action": "open_camera"' in ai_message or (locals().get('action') == 'open_camera'):
              response_data['action'] = 'open_camera'
+        
+        if '{"action": "start_checkout"' in ai_message:
+            response_data['action'] = 'start_checkout'
         
         if products:
             response_data['products'] = products

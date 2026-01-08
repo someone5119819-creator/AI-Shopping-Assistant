@@ -19,6 +19,10 @@ export const useAssistant = () => {
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [selectedProducts, setSelectedProducts] = useState([]);
 
+    // Checkout state
+    const [checkoutStage, setCheckoutStage] = useState(null);
+    // null | 'review' | 'address' | 'payment' | 'success'
+
     // Simple cart state
     const [cartItems, setCartItems] = useState([]);
     const [cartCount, setCartCount] = useState(0);
@@ -221,6 +225,14 @@ export const useAssistant = () => {
             setStatus('Camera Ready');
         }
 
+        // Handle Checkout Action
+        if (data.action === 'start_checkout') {
+            if (cartItems.length > 0) {
+                setCheckoutStage('review');
+                setStatus('Checkout');
+            }
+        }
+
         if (data.products && data.products.length > 0) {
             setProducts(data.products);
             setStatus('Products Found');
@@ -260,11 +272,11 @@ export const useAssistant = () => {
 
                 // Clear any previous typewriter
                 if (typeWriterRef.current) clearInterval(typeWriterRef.current);
-                setLiveAiText(''); // Correct: Start empty
+                setLiveAiText(''); // Start empty
 
                 audio.onplay = () => {
                     setIsSpeaking(true);
-                    isSpeakingRef.current = true; // Sync Ref
+                    isSpeakingRef.current = true;
                     setStatus('Speaking...');
 
                     // Connect to analyser
@@ -273,16 +285,14 @@ export const useAssistant = () => {
                     source.connect(analyserRef.current);
                     source.connect(ctx.destination);
 
-                    // Typewriter Effect
-                    // Average speaking rate ~ 15 chars per second (adjust as needed)
-                    // Or we can try to use audio.duration if metadata is loaded (might be NaN at start)
+                    // Typewriter Effect - use substring to avoid character corruption
                     let i = 0;
-                    const speed = 50; // ms per char (approx 20 chars/sec)
+                    const speed = 50; // ms per char
 
                     typeWriterRef.current = setInterval(() => {
                         if (i < text.length) {
-                            setLiveAiText(prev => prev + text.charAt(i));
                             i++;
+                            setLiveAiText(text.substring(0, i)); // Use substring instead of concatenation
                         } else {
                             clearInterval(typeWriterRef.current);
                         }
@@ -408,6 +418,8 @@ export const useAssistant = () => {
         addToCart,
         viewCart,
         clearCart,
+        checkoutStage,
+        setCheckoutStage,
         analyser: analyserRef.current,
         startListening,
         stopListening,
