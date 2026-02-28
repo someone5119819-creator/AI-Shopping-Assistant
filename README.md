@@ -1,6 +1,6 @@
-# Voice-First AI Shopping Consultant (Gemini Pro Edition)
+# 🛒 AI Shopping Assistant
 
-> **"The Smart Consultant"** — An uncompromisingly guardrailed, voice-enabled AI shopping assistant powered by Google Gemini 3 Pro, ElevenLabs, and reactively synchronized frontend logic.
+> Talk to an AI shopping expert that helps you find the perfect camera or audio gear — using your voice.
 
 ![Status](https://img.shields.io/badge/Status-Production_Ready-success)
 ![Brain](https://img.shields.io/badge/Brain-Gemini_3_Pro-blue)
@@ -9,199 +9,280 @@
 
 ---
 
-## 📚 Documentation Hub
-For a deep dive into specific components, please refer to our high-fidelity technical guides:
+## 💡 What Does This Do?
 
-*   **[Overall Architecture](./DOCS/OVERVIEW.md)**: Product philosophy and technical stack.
-*   **[Backend & Model Logic](./DOCS/BACKEND_MODEL.md)**: State machine, system prompts, and brand guardrails.
-*   **[RAG & Hybrid Search](./DOCS/RAG_ENGINE.md)**: Vector DB internals and BM25 ranking.
-*   **[Frontend & Visual Sync](./DOCS/FRONTEND_UX.md)**: React architecture, Orb visualizer, and mic sync.
-*   **[API Reference](./DOCS/API_REFERENCE.md)**: Endpoint definitions and schema.
-*   **[Codebase Index](./DOCS/CODEBASE_INDEX.md)**: Complete file-by-file index of every module, class, function, and endpoint.
+This is a **voice-powered AI shopping assistant** that acts like a real store expert for camera and audio equipment. You can:
 
----
+- 🎤 **Talk to it** — Ask questions using your microphone, just like talking to a salesperson
+- 🔍 **Smart Search** — It searches through a product catalog to find exactly what you need
+- 🗣️ **It Talks Back** — The assistant responds with a natural-sounding human voice
+- 🛒 **Buy Stuff** — Add products to your cart and check out, all through conversation
+- 📷 **Show It Things** — Point your camera at gear you already own, and it'll identify it
 
-## 🌟 Executive Summary
-
-This project is not a generic chatbot. It is a specialized **Consultant Agent** built with a strict "Ironclad" architecture designed to replicate the experience of a high-end photography store expert. It features:
-1.  **Strict 3-Phase Logic**: It refuses to search until it understands your specific needs ("Investigator" -> "Searcher" -> "Presenter").
-2.  **Semantic Firewall**: A custom Python-level interceptor that physically blocks the AI from hallucinating brand names before searching.
-3.  **Synchronized Experience**: Frontend logic that "auto-mutes" the mic while thinking and synchronizes product cards with spoken explanations.
+**Example conversation:**
+> **You:** "I need a good camera for YouTube vlogs"
+> **AI:** "Great! Are you filming mostly indoors or outdoors? And what's your budget range?"
+> **You:** "Mostly indoors, under $2000"
+> **AI:** "I found two great options for you..." *(shows product cards with details)*
 
 ---
 
-## 🏗️ Architecture Stack
+## 🚀 Getting Started (Step by Step)
 
-### Backend (The "Brain")
-*   **Core**: Python / Flask
-*   **LLM**: **Google Gemini 3 Pro** (Cloud)
-    *   *Why?* Superior reasoning capabilities compared to local models, essential for maintaining strict state adherence.
-*   **RAG Engine**:
-    *   **Vector Store**: `ChromaDB` (Local)
-    *   **Embeddings**: `all-MiniLM-L6-v2` (Sentence Transformers)
-    *   **Search**: Hybrid (Semantic Vector Cosine Similarity + Keyword BM25)
-*   **Voice Generation**: **ElevenLabs API** (Turbo v2 model)
-    *   *Voice ID*: `cgSgspJ2msm6clMCkdW9` (Jessica - Professional/Crisp)
-    *   *Latency*: Optimized for near real-time responses.
+### What You'll Need Before Starting
 
-### Frontend (The "Face")
-*   **Framework**: React 18 + Vite
-*   **Interaction**: Web Speech API (STT) + HTML5 Audio (TTS)
-*   **State Management**: Custom `useAssistant.js` hook with Ref-based state tracking to prevent stale closures.
-*   **Visuals**: `Three.js` / Canvas-based "Orb" visualizer that reacts to audio frequency (FFT) data.
+| What | Where to Get It | Why |
+|------|----------------|-----|
+| **Python 3.8 or newer** | [python.org/downloads](https://python.org/downloads) | Runs the backend server |
+| **Node.js 18 or newer** | [nodejs.org](https://nodejs.org) | Runs the frontend website |
+| **Google Gemini API Key** | [aistudio.google.com](https://aistudio.google.com) | The AI brain (free tier available) |
+| **ElevenLabs API Key** | [elevenlabs.io](https://elevenlabs.io) | Makes the AI voice sound human |
+
+> [!TIP]
+> **Not sure if you have Python/Node installed?** Open your Terminal (Mac) or Command Prompt (Windows) and type `python3 --version` and `node --version`. If you see version numbers, you're good!
 
 ---
 
-## 🔐 The "Ironclad" Guardrails
+### Step 1: Download the Project
 
-We implemented a multi-layered defense system to ensure the AI *never* hallucinates inventory or breaks character:
+Open your Terminal and run these commands one at a time:
 
-### 1. The Semantic Firewall (Python Layer)
-The AI is strictly explicitly forbidden from "guessing" products.
-*   **Mechanism**: A Python function `detect_brand_leak(text)` scans every output in the "Investigator" phase.
-*   **Watchlist**: Contains 25+ major brands (Sony, Canon, GoPro, DJI, etc.).
-*   **Action**: If the AI slips and mentions "Sony" before searching, the Python backend **intercepts** the message, deletes it, and forces a generic fallback response ("I can check options for you...").
-
-### 2. The 3-Phase State Machine
-The backend tracks a strict session state (`session['stage']`) that the AI cannot override:
-1.  **State 1: INVESTIGATOR** (Default)
-    *   **Goal**: Gather requirements.
-    *   **Constraint**: *Cannot* search. *Cannot* mention products.
-    *   **User**: "I need a camera." -> **AI**: "For vlogging or cinema?"
-2.  **State 2: SEARCHER**
-    *   **Goal**: Search the vector database.
-    *   **Action**: Triggered only when needs are clear. Hybrid RAG search executes.
-3.  **State 3: PRESENTER**
-    *   **Goal**: Explain results.
-    *   **Constraint**: Can *only* discuss the specific JSON products returned by the search. "Database Reality" rule applies (if it's not in the JSON, it doesn't exist).
-
----
-
-## ⚡ Key Features & Logic
-
-### 🧠 Hybrid RAG Search
-We don't rely on just one search method. We assume the user might use broad concepts OR specific keywords.
-*   **Vector Search**: Finds "cinematic look" even if the product doesn't say "cinematic".
-*   **Keyword Search**: Finds "A7S III" even if the embeddings are fuzzy.
-*   **Fusion**: Results are weighted (50/50) and re-ranked for maximum relevance.
-
-### 🗣️ Synchronized Voice/UI
-The frontend `useAssistant.js` hook was heavily engineered for natural conversation:
-*   **Auto-Mute**: The microphone physically stops listening (`recognition.stop()`) the millisecond the AI starts "thinking".
-*   **Auto-Unmute**: The mic re-opens *only* after the AI audio has finished playing.
-*   **Synced Explanation**: The backend generates an "Explanation" message *immediately* after finding products. The frontend plays this audio *exactly* as the visual product cards appear on screen.
-
----
-
-## 🚀 Installation & Setup
-
-### Prerequisites
-*   **Python 3.8+**
-*   **Node.js 18+**
-*   **Google Gemini API Key** (Get from Google AI Studio)
-*   **ElevenLabs API Key**
-
-### 1. Backend Setup
 ```bash
-# Clone
+# Download the project files from GitHub
 git clone https://github.com/someone5119819-creator/AI-Shopping-Assistant.git
+
+# Go into the project folder
 cd AI-Shopping-Assistant
+```
 
-# Virtual Env
+---
+
+### Step 2: Set Up the Backend (Python)
+
+```bash
+# Create an isolated Python environment (keeps things clean)
 python3 -m venv venv
-source venv/bin/activate
 
-# Install Dependencies
+# Activate the environment
+# On Mac/Linux:
+source venv/bin/activate
+# On Windows:
+# venv\Scripts\activate
+
+# Install all required packages (this may take a minute)
 pip install -r requirements.txt
 ```
 
-### 2. Configuration (`.env`)
-Create a `.env` file in the root:
+> [!NOTE]
+> You'll know the environment is active when you see `(venv)` at the start of your terminal line.
+
+---
+
+### Step 3: Add Your API Keys
+
+1. Find the file called `.env.example` in the project folder
+2. Make a copy and rename it to `.env`
+3. Open `.env` in any text editor and fill in your keys:
+
 ```ini
-FLASK_APP=assistant_api.py
-FLASK_ENV=development
-GEMINI_API_KEY=AIzaSy...    # Your Google Gemini Key
-ELEVENLABS_API_KEY=sk_...   # Your ElevenLabs Key
+# Replace the placeholder values with your actual keys:
+GEMINI_API_KEY=paste_your_gemini_key_here
+ELEVENLABS_API_KEY=paste_your_elevenlabs_key_here
 ELEVENLABS_VOICE_ID=cgSgspJ2msm6clMCkdW9
 ```
 
-### 3. Data Processing (Optional)
-If running for the first time, index the products:
-```bash
-python data_processor.py
-# This creates the ./chroma_db folder with vector embeddings
-```
+> [!IMPORTANT]
+> **Never share your `.env` file or commit it to GitHub.** It contains your private API keys.
 
-### 4. Running the System
-**Terminal 1 (Backend)**:
-```bash
-source venv/bin/activate
-python assistant_api.py
-# Running on http://localhost:8001
-```
+---
 
-**Terminal 2 (Frontend)**:
+### Step 4: Set Up the Frontend (React)
+
+Open a **new** terminal window:
+
 ```bash
+# Go into the frontend folder
 cd frontend_react
+
+# Install frontend packages (this may take a minute)
 npm install
-npm run dev
-# Running on http://localhost:5173
 ```
 
 ---
 
-## 📂 Project Structure
+### Step 5: Run the App! 🎉
+
+You need **two terminal windows** running at the same time:
+
+**Terminal 1 — Start the AI Backend:**
+```bash
+# Make sure you're in the main project folder
+source venv/bin/activate
+python assistant_api.py
+```
+You should see: `Running on http://localhost:8001`
+
+**Terminal 2 — Start the Website:**
+```bash
+cd frontend_react
+npm run dev
+```
+You should see: `Local: http://localhost:5173`
+
+**Now open your browser and go to: [http://localhost:5173](http://localhost:5173)** 🚀
+
+> [!TIP]
+> **To stop the app**, press `Ctrl + C` in each terminal window.
+
+---
+
+## 🎯 How It Works (Simple Version)
+
+The assistant follows a strict 3-step process, just like a real store consultant:
+
+| Step | What It Does | Example |
+|------|-------------|---------|
+| **1. Ask Questions** | Understands what you actually need | *"What will you use it for? What's your budget?"* |
+| **2. Search** | Searches the product database | *Finds matching products from inventory* |
+| **3. Recommend** | Shows you only real products it found | *"Here are two options that match..."* |
+
+**Why this matters:** Unlike regular chatbots, this assistant **never makes up products**. It can only recommend items that actually exist in the store's inventory.
+
+---
+
+## ❓ Troubleshooting / FAQ
+
+<details>
+<summary><strong>🔴 "ModuleNotFoundError" or "command not found: pip"</strong></summary>
+
+Make sure you've activated the virtual environment first:
+```bash
+source venv/bin/activate  # Mac/Linux
+# or
+venv\Scripts\activate     # Windows
+```
+Then try `pip install -r requirements.txt` again.
+</details>
+
+<details>
+<summary><strong>🔴 The mic isn't working</strong></summary>
+
+- Make sure your browser has microphone permission (check the lock icon in the URL bar)
+- Use **Chrome** or **Edge** — Safari has limited voice support
+- Check that your system microphone is working in System Settings
+</details>
+
+<details>
+<summary><strong>🔴 "GEMINI_API_KEY is required" error</strong></summary>
+
+Make sure you:
+1. Renamed `.env.example` to `.env`
+2. Pasted your actual API key (not the placeholder text)
+3. Restarted the backend server after editing `.env`
+</details>
+
+<details>
+<summary><strong>🔴 Frontend shows "connection refused"</strong></summary>
+
+The backend server must be running first. Check Terminal 1 and make sure you see "Running on http://localhost:8001".
+</details>
+
+---
+
+## 🏗️ Technical Deep Dive
+
+<details>
+<summary><strong>Click to expand — Architecture & Tech Stack</strong></summary>
+
+### Backend (The "Brain")
+- **Core**: Python / Flask
+- **LLM**: Google Gemini 3 Pro (Cloud) — chosen for superior reasoning and strict state adherence
+- **RAG Engine**:
+  - **Vector Store**: ChromaDB (Local)
+  - **Embeddings**: `all-MiniLM-L6-v2` (Sentence Transformers)
+  - **Search**: Hybrid (Semantic Vector Cosine Similarity + Keyword BM25)
+- **Voice**: ElevenLabs API (Turbo v2 model)
+
+### Frontend (The "Face")
+- **Framework**: React 18 + Vite
+- **Voice Input**: Web Speech API (STT)
+- **Voice Output**: HTML5 Audio (TTS via ElevenLabs)
+- **Visuals**: Canvas-based "Orb" visualizer that reacts to audio
+
+### Guardrails
+1. **Brand Firewall** — Python-level interception prevents the AI from mentioning brands before searching (25+ brand watchlist)
+2. **3-Phase State Machine** — Backend enforces Investigator → Searcher → Presenter flow
+3. **Database Reality** — AI can only discuss products that exist in search results
+
+</details>
+
+<details>
+<summary><strong>Click to expand — Project Structure</strong></summary>
 
 ```text
 /
-├── config.py               # CONFIG: Centralized env-based configuration
-├── shopify_fetcher.py      # ETL: Shopify Admin API product fetcher
-├── data_processor.py       # ETL: Product JSON -> searchable documents
-├── embeddings.py           # ML: Sentence-transformer embedding generator
-├── vector_store.py         # DB: ChromaDB vector storage & search
-├── keyword_search.py       # SEARCH: BM25 keyword search engine
-├── hybrid_search.py        # SEARCH: Semantic + keyword fusion
-├── search.py               # SEARCH: High-level search interface
-├── api.py                  # API: FastAPI REST search API (port 8000)
-├── assistant_api.py        # CORE: Flask AI assistant (port 8001)
-├── setup.py                # SETUP: First-run setup wizard
-├── products.json           # DATA: Cached product catalog (~9 MB)
-├── requirements.txt        # DEPS: Python dependencies
-├── DOCS/                   # DOCS: Technical documentation
+├── config.py               # Centralized configuration
+├── shopify_fetcher.py      # Shopify API product fetcher
+├── data_processor.py       # Product data → searchable documents
+├── embeddings.py           # Text → vector embedding generator
+├── vector_store.py         # ChromaDB vector storage & search
+├── keyword_search.py       # BM25 keyword search engine
+├── hybrid_search.py        # Semantic + keyword search fusion
+├── search.py               # High-level search interface
+├── api.py                  # FastAPI search API (port 8000)
+├── assistant_api.py        # Flask AI assistant (port 8001)
+├── setup.py                # First-run setup wizard
+├── products.json           # Product catalog data (~9 MB)
+├── requirements.txt        # Python dependencies
+├── DOCS/                   # Technical documentation
 │   ├── OVERVIEW.md
 │   ├── BACKEND_MODEL.md
 │   ├── RAG_ENGINE.md
 │   ├── FRONTEND_UX.md
 │   ├── API_REFERENCE.md
-│   └── CODEBASE_INDEX.md   # NEW: Complete file-by-file codebase index
-├── examples/               # EXAMPLES: Usage examples
+│   └── CODEBASE_INDEX.md   # Complete codebase index
+├── examples/               # Usage examples
 │   ├── basic_search.py
 │   └── rag_query.py
-└── frontend_react/         # UI: React Application
+└── frontend_react/         # React frontend
     ├── src/
-    │   ├── App.jsx             # Main layout & routing
+    │   ├── App.jsx
     │   ├── hooks/
-    │   │   └── useAssistant.js  # Core hook (voice, chat, cart, TTS)
+    │   │   └── useAssistant.js
     │   └── components/
-    │       ├── OrbVisualizer.jsx    # Audio-reactive 3D orb
-    │       ├── CartDrawer.jsx       # Cart side drawer
-    │       ├── CheckoutScreen.jsx   # Checkout modal
-    │       └── checkout/            # Inline checkout flow
+    │       ├── OrbVisualizer.jsx
+    │       ├── CartDrawer.jsx
+    │       ├── CheckoutScreen.jsx
+    │       └── checkout/
     └── vite.config.js
 ```
 
+</details>
+
 ---
 
-## 📜 Complete Changelog / History
-*   **v1.0**: Initial RAG implementation using **Ollama (Llama 3)** locally. Basic search.
-*   **v1.1**: Added **Orb Visualizer** and basic TTS.
-*   **v1.5**: Implemented **Hybrid Search** (Vector + Keyword) for better accuracy.
-*   **v2.0**: The "Consultant Upgrade".
-    *   Moved from simple Chatbot to **3-Phase State Machine** (Investigator/Searcher/Presenter).
-    *   Added **ElevenLabs** for premium voice.
-*   **v2.5**: **Ironclad Guardrails**.
-    *   Added Python-level brand interception to stop hallucinations.
-    *   Strict "Database Reality" prompt enforcement.
-*   **v3.0 (Current)**: **Cloud Migration**.
-    *   Migrated LLM to **Google Gemini 3 Pro**.
-    *   Implemented frontend Auto-Mute/Unmute synchronization.
+## 📚 Documentation Hub
+
+For developers who want to understand the internals:
+
+| Guide | What's Inside |
+|-------|--------------|
+| [Overall Architecture](./DOCS/OVERVIEW.md) | Product philosophy and technical stack |
+| [Backend & Model Logic](./DOCS/BACKEND_MODEL.md) | State machine, system prompts, guardrails |
+| [RAG & Hybrid Search](./DOCS/RAG_ENGINE.md) | Vector DB internals and BM25 ranking |
+| [Frontend & Visual Sync](./DOCS/FRONTEND_UX.md) | React architecture, Orb visualizer, mic sync |
+| [API Reference](./DOCS/API_REFERENCE.md) | Endpoint definitions and schema |
+| [Codebase Index](./DOCS/CODEBASE_INDEX.md) | Every module, class, function, and endpoint |
+
+---
+
+## 📜 Version History
+
+| Version | What Changed |
+|---------|-------------|
+| **v3.0** (Current) | Migrated to **Google Gemini 3 Pro**, added auto-mute/unmute sync |
+| **v2.5** | Added "Ironclad" guardrails — brand interception + database reality |
+| **v2.0** | 3-phase state machine + ElevenLabs premium voice |
+| **v1.5** | Hybrid search (vector + keyword) for better accuracy |
+| **v1.1** | Added Orb Visualizer and basic TTS |
+| **v1.0** | Initial RAG with Ollama (Llama 3) |
