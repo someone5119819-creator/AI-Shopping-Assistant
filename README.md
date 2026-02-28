@@ -17,6 +17,7 @@ For a deep dive into specific components, please refer to our high-fidelity tech
 *   **[RAG & Hybrid Search](./DOCS/RAG_ENGINE.md)**: Vector DB internals and BM25 ranking.
 *   **[Frontend & Visual Sync](./DOCS/FRONTEND_UX.md)**: React architecture, Orb visualizer, and mic sync.
 *   **[API Reference](./DOCS/API_REFERENCE.md)**: Endpoint definitions and schema.
+*   **[Codebase Index](./DOCS/CODEBASE_INDEX.md)**: Complete file-by-file index of every module, class, function, and endpoint.
 
 ---
 
@@ -153,18 +154,40 @@ npm run dev
 
 ```text
 /
-├── assistant_api.py        # CORE: Flask App, System Prompt, Gemini Logic, Guardrails
-├── data_processor.py       # ETL: Loads JSON -> Generates Embeddings -> Saves to ChromaDB
-├── hybrid_search.py        # LOGIC: The RAG engine (Vector + Keyword fusion)
-├── products.json           # DATA: The raw product catalog
+├── config.py               # CONFIG: Centralized env-based configuration
+├── shopify_fetcher.py      # ETL: Shopify Admin API product fetcher
+├── data_processor.py       # ETL: Product JSON -> searchable documents
+├── embeddings.py           # ML: Sentence-transformer embedding generator
+├── vector_store.py         # DB: ChromaDB vector storage & search
+├── keyword_search.py       # SEARCH: BM25 keyword search engine
+├── hybrid_search.py        # SEARCH: Semantic + keyword fusion
+├── search.py               # SEARCH: High-level search interface
+├── api.py                  # API: FastAPI REST search API (port 8000)
+├── assistant_api.py        # CORE: Flask AI assistant (port 8001)
+├── setup.py                # SETUP: First-run setup wizard
+├── products.json           # DATA: Cached product catalog (~9 MB)
 ├── requirements.txt        # DEPS: Python dependencies
-└── frontend_react/         # UI: The React Application
+├── DOCS/                   # DOCS: Technical documentation
+│   ├── OVERVIEW.md
+│   ├── BACKEND_MODEL.md
+│   ├── RAG_ENGINE.md
+│   ├── FRONTEND_UX.md
+│   ├── API_REFERENCE.md
+│   └── CODEBASE_INDEX.md   # NEW: Complete file-by-file codebase index
+├── examples/               # EXAMPLES: Usage examples
+│   ├── basic_search.py
+│   └── rag_query.py
+└── frontend_react/         # UI: React Application
     ├── src/
+    │   ├── App.jsx             # Main layout & routing
     │   ├── hooks/
-    │   │   └── useAssistant.js  # LOGIC: The "Brain" of the frontend (Audio/WebSockets)
-    │   ├── components/
-    │   │   └── OrbVisualizer.jsx # UI: The reactive 3D audio visualizer
-    │   └── App.jsx             # UI: Main Layout
+    │   │   └── useAssistant.js  # Core hook (voice, chat, cart, TTS)
+    │   └── components/
+    │       ├── OrbVisualizer.jsx    # Audio-reactive 3D orb
+    │       ├── CartDrawer.jsx       # Cart side drawer
+    │       ├── CheckoutScreen.jsx   # Checkout modal
+    │       └── checkout/            # Inline checkout flow
+    └── vite.config.js
 ```
 
 ---
