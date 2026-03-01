@@ -18,6 +18,8 @@ This is a **voice-powered AI shopping assistant** that acts like a real store ex
 - 🗣️ **It Talks Back** — The assistant responds with a natural-sounding human voice
 - 🛒 **Buy Stuff** — Add products to your cart and check out, all through conversation
 - 📷 **Show It Things** — Point your camera at gear you already own, and it'll identify it
+- 👤 **Personalized Profile** — It remembers your brand preferences and skill level across sessions
+- 🤖 **Smart Comparisons** — Ask it to compare two products for a technical, voice-friendly breakdown
 
 **Example conversation:**
 > **You:** "I need a good camera for YouTube vlogs"
@@ -217,12 +219,13 @@ The backend server must be running first. Check Terminal 1 and make sure you see
 
 ### Backend (The "Brain")
 - **Core**: Python / Flask
-- **LLM**: Google Gemini 3 Pro (Cloud) — chosen for superior reasoning and strict state adherence
+- **LLM**: Google Gemini Flash (Cloud) — Upgraded for speed and reliability
 - **RAG Engine**:
   - **Vector Store**: ChromaDB (Local)
   - **Embeddings**: `all-MiniLM-L6-v2` (Sentence Transformers)
   - **Search**: Hybrid (Semantic Vector Cosine Similarity + Keyword BM25)
 - **Voice**: ElevenLabs API (Turbo v2 model)
+- **Memory**: Persistent User Profiles (`shopping_profiles.json`) for cross-session learning
 
 ### Frontend (The "Face")
 - **Framework**: React 18 + Vite
@@ -252,6 +255,9 @@ The backend server must be running first. Check Terminal 1 and make sure you see
 ├── search.py               # High-level search interface
 ├── api.py                  # FastAPI search API (port 8000)
 ├── assistant_api.py        # Flask AI assistant (port 8001)
+├── assistant_api_new_prompt.py
+├── shopping_profiles.json   # LOCAL DB: Persistent user preferences
+├── chroma_db/               # LOCAL DB: Vector store for RAG
 ├── run_all.sh              # CUSTOM: Startup script (fuck u fukka)
 ├── kill_all.sh             # CUSTOM: Shutdown script (i fucked u fukka)
 ├── setup.py                # First-run setup wizard
@@ -303,9 +309,10 @@ For developers who want to understand the internals:
 
 | Version | What Changed |
 |---------|-------------|
+| **v5.5** (Current) | **Future Features Phase 1**. Added Personalized Shopping Profiles (persistent learning) and AI-Powered Side-by-Side Comparisons. Upgraded to **Gemini Flash**. |
 | **v5.0** (Beta) | **Vision & AR Integration**. Implemented Image Based Search with Camera UI, Live AR Object Detection & Realtime Optimization, and experimental Gemini Live API. |
 | **v4.5** | **New Assistant UI**. Enhanced assistant styling with refined orb animations, scaling support, and Active UI redesign. |
-| **v4.0** (Current) | **E-Commerce Integration**. Added robust Cart functionality, Conversational Checkout Flow with inline UI, and complete Shopify checkout integration. |
+| **v4.0** | **E-Commerce Integration**. Added robust Cart functionality, Conversational Checkout Flow with inline UI, and complete Shopify checkout integration. |
 | **v3.5** | **Custom Automation**. Added `fuck u fukka` and `i fucked u fukka` commands for easy service management. |
 | **v3.2** | **UI Overhaul**. Refined Orb Visualizer to Canvas, updated UI layout with Dynamic Content area, and improved Transcript sync. |
 | **v3.0** | **Cloud Migration**. Migrated to **Google Gemini 3 Pro**, added auto-mute/unmute sync |
