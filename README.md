@@ -112,7 +112,19 @@ npm install
 
 ### Step 5: Run the App! 🎉
 
-You need **two terminal windows** running at the same time:
+The easiest way to start everything (all 4 servers) is using the custom command:
+
+```bash
+# Start all servers (Search API, Assistant API, Hybrid UI, and React UI)
+fuck u fukka
+```
+
+**Now open your browser and go to: [http://localhost:5173](http://localhost:5173)** 🚀
+
+<details>
+<summary><strong>Alternative: Manual Method (Multi-Terminal)</strong></summary>
+
+If you prefer to see logs in real-time or run things manually, you need **two terminal windows**:
 
 **Terminal 1 — Start the AI Backend:**
 ```bash
@@ -128,11 +140,20 @@ cd frontend_react
 npm run dev
 ```
 You should see: `Local: http://localhost:5173`
+</details>
 
-**Now open your browser and go to: [http://localhost:5173](http://localhost:5173)** 🚀
+---
+
+## 🛑 Stop the App
+
+To stop all servers instantly, use the custom shutdown command:
+
+```bash
+i fucked u fukka
+```
 
 > [!TIP]
-> **To stop the app**, press `Ctrl + C` in each terminal window.
+> This command kills all processes on ports 8000, 8001, 8080, and 5173, ensuring a clean exit.
 
 ---
 
@@ -231,6 +252,8 @@ The backend server must be running first. Check Terminal 1 and make sure you see
 ├── search.py               # High-level search interface
 ├── api.py                  # FastAPI search API (port 8000)
 ├── assistant_api.py        # Flask AI assistant (port 8001)
+├── run_all.sh              # CUSTOM: Startup script (fuck u fukka)
+├── kill_all.sh             # CUSTOM: Shutdown script (i fucked u fukka)
 ├── setup.py                # First-run setup wizard
 ├── products.json           # Product catalog data (~9 MB)
 ├── requirements.txt        # Python dependencies
