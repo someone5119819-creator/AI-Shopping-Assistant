@@ -303,7 +303,8 @@ For developers who want to understand the internals:
 
 | Version | What Changed |
 |---------|-------------|
-| **v3.0** (Current) | Migrated to **Google Gemini 3 Pro**, added auto-mute/unmute sync |
+| **v3.5** (Current) | **Custom Automation**. Added `fuck u fukka` and `i fucked u fukka` commands for easy service management. |
+| **v3.0** | **Cloud Migration**. Migrated to **Google Gemini 3 Pro**, added auto-mute/unmute sync |
 | **v2.5** | Added "Ironclad" guardrails — brand interception + database reality |
 | **v2.0** | 3-phase state machine + ElevenLabs premium voice |
 | **v1.5** | Hybrid search (vector + keyword) for better accuracy |
