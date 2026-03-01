@@ -303,6 +303,8 @@ For developers who want to understand the internals:
 
 | Version | What Changed |
 |---------|-------------|
+| **v5.0** (Beta) | **Vision & AR Integration**. Implemented Image Based Search with Camera UI, Live AR Object Detection & Realtime Optimization, and experimental Gemini Live API. |
+| **v4.5** | **New Assistant UI**. Enhanced assistant styling with refined orb animations, scaling support, and Active UI redesign. |
 | **v4.0** (Current) | **E-Commerce Integration**. Added robust Cart functionality, Conversational Checkout Flow with inline UI, and complete Shopify checkout integration. |
 | **v3.5** | **Custom Automation**. Added `fuck u fukka` and `i fucked u fukka` commands for easy service management. |
 | **v3.2** | **UI Overhaul**. Refined Orb Visualizer to Canvas, updated UI layout with Dynamic Content area, and improved Transcript sync. |
