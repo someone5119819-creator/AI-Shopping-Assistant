@@ -303,7 +303,9 @@ For developers who want to understand the internals:
 
 | Version | What Changed |
 |---------|-------------|
-| **v3.5** (Current) | **Custom Automation**. Added `fuck u fukka` and `i fucked u fukka` commands for easy service management. |
+| **v4.0** (Current) | **E-Commerce Integration**. Added robust Cart functionality, Conversational Checkout Flow with inline UI, and complete Shopify checkout integration. |
+| **v3.5** | **Custom Automation**. Added `fuck u fukka` and `i fucked u fukka` commands for easy service management. |
+| **v3.2** | **UI Overhaul**. Refined Orb Visualizer to Canvas, updated UI layout with Dynamic Content area, and improved Transcript sync. |
 | **v3.0** | **Cloud Migration**. Migrated to **Google Gemini 3 Pro**, added auto-mute/unmute sync |
 | **v2.5** | Added "Ironclad" guardrails — brand interception + database reality |
 | **v2.0** | 3-phase state machine + ElevenLabs premium voice |
