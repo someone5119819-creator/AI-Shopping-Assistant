@@ -25,7 +25,8 @@ shopify_rag/
 ├── hybrid_search.py              # Semantic + keyword hybrid search
 ├── search.py                     # High-level search interface
 ├── api.py                        # FastAPI REST API (port 8000)
-├── assistant_api.py              # Flask AI assistant API (port 8001)
+├── assistant_api.py              # Flask AI assistant (port 8001)
+├── shopping_profiles.json        # LOCAL DB: Persistent user preferences
 ├── setup.py                      # First-run setup wizard
 │
 ├── ── FRONTEND (React + Vite) ───────────────────────────

@@ -7,15 +7,17 @@ The **Smart Shopping Assistant** is designed to bridge the gap between static e-
 1.  **Needs-First Interaction**: Never suggest a product without understanding the "Why".
 2.  **Ironclad Grounding**: Zero tolerance for hallucinations. If it's not in the database, it doesn't exist.
 3.  **Voice-Synchronized UX**: Speech and visuals must operate as a single, cohesive entity.
+4.  **Persistent Personalization**: Learn and remember user preferences (Brand, Skill, Style) across sessions.
+5.  **Global Accessibility**: Automatic multi-language support (English, Spanish, French, etc.) and PWA mobile readiness.
 
 ---
 
 ## 🏗️ Technical Stack
 
 ### Brain (LLM)
-*   **Provider**: Google Gemini 3 Pro
-*   **Role**: Orchestration, state management, and natural language explanation.
-*   **Migration History**: Started on local Ollama (Llama 3/Mistral) for privacy, migrated to Gemini for superior reasoning and complex instruction following.
+*   **Provider**: Google Gemini Flash (Cloud)
+*   **Role**: Orchestration, state management, natural language explanation, and cross-session learning.
+*   **Migration History**: Migrated from Ollama → Gemini 3 Pro → Gemini Flash for optimal speed-to-performance ratio and lower latency in voice interactions.
 
 ### Knowledge (RAG)
 *   **Engine**: Hybrid RAG (Retrieval-Augmented Generation).
@@ -38,11 +40,12 @@ The **Smart Shopping Assistant** is designed to bridge the gap between static e-
 ## 🛣️ Data Flow Summary
 
 1.  **User Speech**: Captured via browser mic -> Transcribed to text in real-time.
-2.  **Backend Analysis**: Gemini analyzes intent.
+2.  **Backend Analysis**: Gemini analyzes intent and **learns from preferences**.
     *   *Phase 1*: Asks clarifying questions (Semantic Firewall active).
-    *   *Phase 2*: Triggers JSON-based Search Action.
+    *   *Phase 2*: Triggers JSON-based Search Action (Standard or Aesthetic/Style matched).
 3.  **RAG Fetch**: Hybrid search finds 1-2 optimal products from products.json.
-4.  **Sync-Response**:
-    *   Backend generates explanation for results.
+4.  **Memory Save**: User preferences (Brand Affinity, Skill Level, Style) are persisted to `shopping_profiles.json`.
+5.  **Sync-Response**:
+    *   Backend generates explanation (Comparison or Standard) for results.
     *   Frontend receives Product Data + Audio Explanation.
     *   Frontend mutes mic, shows cards, and speaks explanation simultaneously.
