@@ -16,10 +16,11 @@ This is a **voice-powered AI shopping assistant** that acts like a real store ex
 - 🎤 **Talk to it** — Ask questions using your microphone, just like talking to a salesperson
 - 🔍 **Smart Search** — It searches through a product catalog to find exactly what you need
 - 🗣️ **It Talks Back** — The assistant responds with a natural-sounding human voice
-- 🛒 **Buy Stuff** — Add products to your cart and check out, all through conversation
-- 📷 **Show It Things** — Point your camera at gear you already own, and it'll identify it
 - 👤 **Personalized Profile** — It remembers your brand preferences and skill level across sessions
 - 🤖 **Smart Comparisons** — Ask it to compare two products for a technical, voice-friendly breakdown
+- 🌎 **Speak Your Language** — Automatically detects and responds in Spanish, French, and more
+- 📸 **Style Matching** — Mention a "vibe" or show a style you like, and the AI finds matching designs
+- 📱 **Installable App** — Fully functional PWA that you can add to your phone's home screen
 
 **Example conversation:**
 > **You:** "I need a good camera for YouTube vlogs"
@@ -237,6 +238,7 @@ The backend server must be running first. Check Terminal 1 and make sure you see
 1. **Brand Firewall** — Python-level interception prevents the AI from mentioning brands before searching (25+ brand watchlist)
 2. **3-Phase State Machine** — Backend enforces Investigator → Searcher → Presenter flow
 3. **Database Reality** — AI can only discuss products that exist in search results
+4. **Persistent Memory** — Secure local encryption of user preferences for a consistent experience
 
 </details>
 
@@ -255,7 +257,6 @@ The backend server must be running first. Check Terminal 1 and make sure you see
 ├── search.py               # High-level search interface
 ├── api.py                  # FastAPI search API (port 8000)
 ├── assistant_api.py        # Flask AI assistant (port 8001)
-├── assistant_api_new_prompt.py
 ├── shopping_profiles.json   # LOCAL DB: Persistent user preferences
 ├── chroma_db/               # LOCAL DB: Vector store for RAG
 ├── run_all.sh              # CUSTOM: Startup script (fuck u fukka)
@@ -283,6 +284,10 @@ The backend server must be running first. Check Terminal 1 and make sure you see
     │       ├── CartDrawer.jsx
     │       ├── CheckoutScreen.jsx
     │       └── checkout/
+    ├── public/
+    │   ├── manifest.json       # PWA Manifest
+    │   ├── service-worker.js   # PWA Service Worker
+    │   └── icon-512.png        # Premium App Icon
     └── vite.config.js
 ```
 
