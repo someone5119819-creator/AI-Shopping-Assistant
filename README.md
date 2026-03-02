@@ -309,7 +309,8 @@ For developers who want to understand the internals:
 
 | Version | What Changed |
 |---------|-------------|
-| **v5.5** (Current) | **Future Features Phase 1**. Added Personalized Shopping Profiles (persistent learning) and AI-Powered Side-by-Side Comparisons. Upgraded to **Gemini Flash**. |
+| **v6.0** (Current) | **Future Features Phase 2**. Added Multi-language Support (Spanish, French, etc.), Visual Style Matching (aesthetic search), and PWA Support with a premium app icon. |
+| **v5.5** | **Future Features Phase 1**. Added Personalized Shopping Profiles (persistent learning) and AI-Powered Side-by-Side Comparisons. Upgraded to **Gemini Flash**. |
 | **v5.0** (Beta) | **Vision & AR Integration**. Implemented Image Based Search with Camera UI, Live AR Object Detection & Realtime Optimization, and experimental Gemini Live API. |
 | **v4.5** | **New Assistant UI**. Enhanced assistant styling with refined orb animations, scaling support, and Active UI redesign. |
 | **v4.0** | **E-Commerce Integration**. Added robust Cart functionality, Conversational Checkout Flow with inline UI, and complete Shopify checkout integration. |

@@ -1,0 +1,12 @@
+{
+    "test_user_123": {
+        "affinity": "Sony",
+        "skill": "professional",
+        "style": "wedding photography"
+    },
+    "test_phase2_user": {
+        "affinity": "None",
+        "skill": "principiante",
+        "style": "vlogs, vintage aesthetic"
+    }
+}
