@@ -26,6 +26,7 @@ This is a **voice-powered AI shopping assistant** that acts like a real store ex
 - 🗣️ **Voice UI Navigation** — Say "scroll down", "open my cart", or "checkout" to control the app hands-free
 - 🛒 **Smart Bundling** — The AI proactively suggests compatible accessories to build complete kits
 - 💾 **Chat Memory (Quota Saver)** — Remembers your conversation across sessions and uses a **Local Q&A Bypass** to save Gemini API quota on repeat questions
+- 🔍 **Codebase Indexing (Sourcebot)** — Advanced semantic search for developers to explore the code at `http://localhost:54321`
 - 📱 **Installable App** — Fully functional PWA that you can add to your phone's home screen
 
 **Example conversation:**
@@ -267,6 +268,9 @@ The backend server must be running first. Check Terminal 1 and make sure you see
 ├── shopping_profiles.json   # LOCAL DB: Persistent chat transcripts & preferences
 ├── price_history.json       # LOCAL DB: Historical price tracking for deals
 ├── chroma_db/               # LOCAL DB: Vector store for RAG
+├── sourcebot/              # CUSTOM: Sourcebot indexing configuration
+│   ├── docker-compose.yml
+│   └── config.json
 ├── run_all.sh              # CUSTOM: Startup script (fuck u fukka)
 ├── kill_all.sh             # CUSTOM: Shutdown script (i fucked u fukka)
 ├── setup.py                # First-run setup wizard

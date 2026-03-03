@@ -1,0 +1,8 @@
+{
+    "connections": {
+        "shopify-rag": {
+            "type": "git",
+            "url": "file:///repos/shopify_rag"
+        }
+    }
+}
