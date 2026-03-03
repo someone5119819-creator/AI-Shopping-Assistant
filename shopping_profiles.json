@@ -18,5 +18,58 @@
         "affinity": "None",
         "skill": "professional",
         "style": "paranormal"
+    },
+    "session_1772519989.658408": {
+        "affinity": "None",
+        "skill": "intermediate",
+        "style": "General"
+    },
+    "session_1772521203.449494": {
+        "chat_history": [
+            {
+                "role": "user",
+                "content": "I need a camera for filming wildlife documentaries in low light"
+            },
+            {
+                "role": "assistant",
+                "content": "That's an exciting project! To help me find the best fit, could you tell me if you're a professional videographer or if you're looking for something more beginner-friendly?"
+            }
+        ]
+    },
+    "session_1772521430.197627": {
+        "chat_history": [
+            {
+                "role": "user",
+                "content": "I need a camera for filming wildlife documentaries in low light"
+            },
+            {
+                "role": "assistant",
+                "content": "To help me find the best fit, could you tell me if you'll be primarily filming from a fixed position, or if you need something very portable for tracking subjects in various terrains? Also, when you mention low light, are we talking about dawn/dusk, deep forest, or even night shots?"
+            }
+        ]
+    },
+    "session_v7_test": {
+        "affinity": "None",
+        "skill": "Professional",
+        "style": "Sports",
+        "chat_history": [
+            {
+                "role": "user",
+                "content": "I need a professional camera for high-speed sports photography"
+            },
+            {
+                "role": "assistant",
+                "content": "Understood. High-speed sports photography demands excellent autofocus, fast continuous shooting, and often good low-light performance. Are you primarily focused on an incredibly fast burst rate to capture every moment, or is superior low-light capability for indoor or evening events a higher priority?"
+            },
+            {
+                "role": "user",
+                "content": "I need a professional camera for high-speed sports photography"
+            },
+            {
+                "role": "assistant",
+                "content": "Understood. High-speed sports photography demands excellent autofocus, fast continuous shooting, and often good low-light performance. Are you primarily focused on an incredibly fast burst rate to capture every moment, or is superior low-light capability for indoor or evening events a higher priority?"
+            }
+        ],
+        "product_interactions": []
     }
 }

@@ -69,9 +69,45 @@ def save_profile(session_id, profile_data):
         profiles[session_id] = profile_data
         with open(PROFILES_FILE, 'w') as f:
             json.dump(profiles, f, indent=4)
-        print(f"[PROFILE] Saved profile for {session_id}")
     except Exception as e:
         print(f"Error saving profile: {e}")
+
+def try_local_answer(user_message, profile):
+    """Attempt to answer from profile memory without calling Gemini."""
+    try:
+        history = profile.get('chat_history', [])
+        if not history:
+            return None
+        
+        msg_lower = user_message.lower().strip()
+        
+        # Skip very short messages
+        if len(msg_lower) < 15:
+            return None
+        
+        for i, msg in enumerate(history):
+            if msg.get('role') != 'user':
+                continue
+            past_q = msg.get('content', '').lower().strip()
+            
+            words_current = set(msg_lower.split())
+            words_past = set(past_q.split())
+            if not words_current or not words_past:
+                continue
+            overlap = len(words_current & words_past) / max(len(words_current), len(words_past))
+            
+            if overlap > 0.75:
+                if i + 1 < len(history) and history[i + 1].get('role') == 'assistant':
+                    cached = history[i + 1]['content']
+                    print(f"[MEMORY HIT] Repeat question detected (overlap: {overlap:.0%}).")
+                    return cached
+        
+        return None
+    except Exception as e:
+        print(f"[MEMORY ERROR] Error in try_local_answer: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 def create_draft_order(email, shipping_address, line_items):
     """Create a Shopify draft order to calculate totals + tax"""
@@ -496,13 +532,31 @@ def chat():
         
         # 1. Load User Profile
         profiles = load_profiles()
-        user_profile = profiles.get(session_id, {
+        user_profile = profiles.get(session_id, {})
+        
+        # Ensure default fields are present (Fix for KeyError)
+        defaults = {
             "affinity": "None",
             "skill": "Unknown",
-            "style": "General"
-        })
+            "style": "General",
+            "chat_history": [],
+            "product_interactions": []
+        }
+        for key, val in defaults.items():
+            if key not in user_profile:
+                user_profile[key] = val
         
         profile_context = f"\nCURRENT USER PROFILE:\n- Brand Affinity: {user_profile['affinity']}\n- Skill Level: {user_profile['skill']}\n- Style: {user_profile['style']}\n"
+        
+        # CHAT MEMORY: Inject past conversation context from saved profile
+        past_chats = user_profile.get('chat_history', [])
+        if past_chats:
+            memory_lines = []
+            for m in past_chats[-6:]:
+                role_label = 'Customer' if m.get('role') == 'user' else 'You'
+                memory_lines.append(f"  {role_label}: {m.get('content', '')[:120]}")
+            memory_summary = "\n".join(memory_lines)
+            profile_context += f"\nPAST CONVERSATION MEMORY (use this to avoid repeating yourself):\n{memory_summary}\n"
         
         messages = [{"role": "system", "content": SYSTEM_PROMPT + profile_context}]
         
@@ -512,6 +566,31 @@ def chat():
             
         # Add current user message
         messages.append({"role": "user", "content": user_message})
+        
+        # LOCAL Q&A BYPASS: Check if this question was asked before
+        try:
+            local_answer = try_local_answer(user_message, user_profile)
+            if local_answer and session.get('stage') != 'presenter':
+                print(f"[MEMORY BYPASS] Skipping Gemini API call — returning cached answer")
+                ai_message = local_answer
+                # Still save to session history
+                session['history'].append({'role': 'user', 'content': user_message})
+                session['history'].append({'role': 'assistant', 'content': ai_message})
+                
+                # Persist updated history
+                user_profile['chat_history'] = session['history'][-20:]
+                save_profile(session_id, user_profile)
+                
+                return jsonify({
+                    'message': ai_message,
+                    'session_id': session_id,
+                    'timestamp': datetime.now().isoformat(),
+                    'source': 'memory'
+                })
+        except Exception as bypass_err:
+            print(f"[MEMORY BYPASS ERROR] {bypass_err}")
+            import traceback
+            traceback.print_exc()
         
         # FORCE SEARCH after 3 turns if still in investigator stage
         force_search = False
@@ -723,6 +802,23 @@ def chat():
         # Add to session history
         session['history'].append({'role': 'user', 'content': user_message})
         session['history'].append({'role': 'assistant', 'content': ai_message})
+        
+        # CHAT MEMORY: Persist chat transcript to profile (last 20 turns)
+        try:
+            profiles = load_profiles()
+            profile = profiles.get(session_id, {})
+            profile['chat_history'] = session['history'][-20:]
+            # Also track product interactions
+            if products:
+                interactions = profile.get('product_interactions', [])
+                for p in products:
+                    title = p.get('title', p.get('metadata', {}).get('title', ''))
+                    if title and title not in interactions:
+                        interactions.append(title)
+                profile['product_interactions'] = interactions[-10:]  # Keep last 10
+            save_profile(session_id, profile)
+        except Exception as e:
+            print(f"[MEMORY SAVE ERROR] {e}")
         
         # Prepare response
         response_data = {
