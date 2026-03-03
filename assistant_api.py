@@ -386,7 +386,7 @@ Output ONLY a JSON array with the exact titles: ["title1", "title2"]
 Do not add any explanation, just the JSON array."""
 
         genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-        model = genai.GenerativeModel('gemini-flash-latest')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         response = model.generate_content(prompt)
         
         # Parse AI response
@@ -426,7 +426,7 @@ def generate_gemini_response(messages):
         
         # Create model with system instruction
         model = genai.GenerativeModel(
-            model_name="gemini-flash-latest",
+            model_name="gemini-2.5-flash",
             system_instruction=system_instruction
         )
         
@@ -951,7 +951,7 @@ def vision_analysis():
         
         # Configure Gemini
         genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-        model = genai.GenerativeModel('gemini-flash-latest') # Upgrade to Gemini 2.5 Flash
+        model = genai.GenerativeModel('gemini-2.5-flash') # Upgrade to Gemini 2.5 Flash
         
         # Prompt for analysis
         prompt = "Identify this product type concisely (e.g., 'Sony A7 camera', 'Rode microphone'). Return ONLY the name of the product."
