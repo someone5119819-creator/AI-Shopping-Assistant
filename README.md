@@ -25,7 +25,7 @@ This is a **voice-powered AI shopping assistant** that acts like a real store ex
 - 📉 **Price Intelligence** — Detects price drops and flags deals so you never overpay
 - 🗣️ **Voice UI Navigation** — Say "scroll down", "open my cart", or "checkout" to control the app hands-free
 - 🛒 **Smart Bundling** — The AI proactively suggests compatible accessories to build complete kits
-- 🧠 **Chat Memory** — Remembers your conversation across sessions and uses a local bypass to answer repeats instantly (saving API quota)
+- 💾 **Chat Memory (Quota Saver)** — Remembers your conversation across sessions and uses a **Local Q&A Bypass** to save Gemini API quota on repeat questions
 - 📱 **Installable App** — Fully functional PWA that you can add to your phone's home screen
 
 **Example conversation:**
@@ -226,13 +226,13 @@ The backend server must be running first. Check Terminal 1 and make sure you see
 
 ### Backend (The "Brain")
 - **Core**: Python / Flask
-- **LLM**: Google Gemini 2.5 Flash (Cloud) — Optimized for speed, reliability, and high-quota availability
+- **LLM**: **Google Gemini 2.5 Flash** (Cloud) — Optimized for speed and high-volume requests
 - **RAG Engine**:
   - **Vector Store**: ChromaDB (Local)
   - **Embeddings**: `all-MiniLM-L6-v2` (Sentence Transformers)
   - **Search**: Hybrid (Semantic Vector Cosine Similarity + Keyword BM25)
 - **Voice**: ElevenLabs API (Turbo v2 model)
-- **Memory**: Persistent User Profiles (`shopping_profiles.json`) with **Chat Memory** (last 20 turns) and local Q&A bypass
+- **Memory**: Persistent **Chat Memory** & User Profiles (`shopping_profiles.json`) for cross-session learning and quota management
 
 ### Frontend (The "Face")
 - **Framework**: React 19 + Vite 7
@@ -264,8 +264,8 @@ The backend server must be running first. Check Terminal 1 and make sure you see
 ├── search.py               # High-level search interface
 ├── api.py                  # FastAPI search API (port 8000)
 ├── assistant_api.py        # Flask AI assistant (port 8001)
-├── shopping_profiles.json   # LOCAL DB: Persistent user preferences
-├── price_history.json       # LOCAL DB: Product price tracking
+├── shopping_profiles.json   # LOCAL DB: Persistent chat transcripts & preferences
+├── price_history.json       # LOCAL DB: Historical price tracking for deals
 ├── chroma_db/               # LOCAL DB: Vector store for RAG
 ├── run_all.sh              # CUSTOM: Startup script (fuck u fukka)
 ├── kill_all.sh             # CUSTOM: Shutdown script (i fucked u fukka)
@@ -322,7 +322,7 @@ For developers who want to understand the internals:
 
 | Version | What Changed |
 |---------|-------------|
-| **v7.0** (Current) | **Phase 3 — Intelligence & Accessibility**. Added Price Intelligence (drop alerts), Voice UI Navigation (hands-free scrolling/cart/checkout), Smart Bundling (accessory suggestions), **Chat Memory & Local Q&A Bypass**, and Gemini turn-sequence fix. Updated all deps: MUI v7.3.8, React 19.2.4, TailwindCSS 4.2.1, Vite 7.3.1. |
+| **v7.0** (Current) | **Phase 3 — Intelligence & Accessibility**. Added Price Intelligence (drop alerts), Voice UI Navigation (hands-free scrolling/cart/checkout), Smart Bundling (accessory suggestions), and **Chat Memory & Local Q&A Bypass** (saves Gemini quota by caching responses). Updated to **Gemini 2.5 Flash**. |
 | **v6.0** | **Phase 2 — Future Features**. Added Multi-language Support (Spanish, French, etc.), Visual Style Matching (aesthetic search), and PWA Support with a premium app icon. |
 | **v5.5** | **Phase 1 — Future Features**. Added Personalized Shopping Profiles (persistent learning) and AI-Powered Side-by-Side Comparisons. Upgraded to **Gemini Flash**. |
 | **v5.0** (Beta) | **Vision & AR Integration**. Implemented Image Based Search with Camera UI, Live AR Object Detection & Realtime Optimization, and experimental Gemini Live API. |
