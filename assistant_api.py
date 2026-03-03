@@ -28,6 +28,29 @@ SHOPIFY_VERSION = os.getenv('SHOPIFY_API_VERSION')
 
 # Shopping Profiles Configuration
 PROFILES_FILE = os.path.join(os.path.dirname(__file__), 'shopping_profiles.json')
+PRICE_HISTORY_FILE = os.path.join(os.path.dirname(__file__), 'price_history.json')
+
+# --- HELPER: Load Price History ---
+def load_price_history():
+    try:
+        if os.path.exists(PRICE_HISTORY_FILE):
+            with open(PRICE_HISTORY_FILE, 'r') as f:
+                return json.load(f)
+        return {}
+    except Exception as e:
+        print(f"[PRICE ERROR] Load failed: {e}")
+        return {}
+
+def check_price_drop(product_id, current_price):
+    history = load_price_history()
+    pid_str = str(product_id)
+    if pid_str in history:
+        previous_prices = history[pid_str]
+        avg_prev = sum(previous_prices) / len(previous_prices)
+        if current_price < avg_prev * 0.98: # 2% drop threshold
+            pct = round((1 - (current_price / avg_prev)) * 100)
+            return f"📉 {pct}% Drop"
+    return None
 
 def load_profiles():
     """Load all user shopping profiles from disk"""
@@ -186,6 +209,16 @@ VISUAL STYLE MATCHING:
 - If a user shows a photo or describes a "vibe" (e.g., "vintage," "minimalist," "steampunk"), identify the aesthetic.
 - When searching, use aesthetic keywords (e.g., "silver finish," "retro design," "compact leather") to find matching products in our "System Context".
 - Explain the visual match: "I found this bag which has that same vintage leather look you liked in the photo."
+
+VOICE UI NAVIGATION:
+- You can control the user's screen. If the user wants to see more or navigate, use these actions:
+  - `scroll_down`: "Show me more", "Scroll down".
+  - `open_cart`: "Show my cart", "What's in my bag?".
+  - `checkout`: "I'm ready to buy", "Go to checkout".
+
+SMART BUNDLING:
+- Proactively suggest ONE essential compatible accessory (Lens, Bag, or SD Card) when a user picks a camera body.
+- "This camera goes perfectly with the [Accessory Name] for a complete kit."
 
 USER PROFILE (Learn & Update):
 - **Brand Affinity**: Do they mention specific brands they like?
@@ -397,27 +430,24 @@ def generate_gemini_response(messages):
             system_instruction=system_instruction
         )
         
-        # Convert history format for Gemini
+        # Convert history format for Gemini with turn-sequence validation
         chat_history = []
         conversation_msgs = messages[1:] # Skip system prompt
         
         for msg in conversation_msgs:
-            role = "user" if msg['role'] == 'user' else "model"
-            # Filter out hidden system messages injected into history if they confuse the model,
-            # BUT for RAG context we usually kept them as 'user' or 'model' messages in Ollama.
-            # Gemini strictly enforces user/model turns.
-            # "system" content in history (like search results) usually needs to be treated as User data or Model context.
-            # We'll map 'system' (search results) to 'user' role for Gemini to see it as input.
-            if msg['role'] == 'system':
-                role = "user" 
+            # Map role to Gemini-compatible roles
+            role = "user" if msg['role'] in ['user', 'system'] else "model"
             
-            chat_history.append({"role": role, "parts": [msg['content']]})
-            
-        # The last message is the current prompt, but the chat.send_message API handles context differently.
-        # We can just use the history to start a chat session.
+            # Merge consecutive messages of the same role
+            if chat_history and chat_history[-1]['role'] == role:
+                chat_history[-1]['parts'][0] += f"\n\n[Context Update]: {msg['content']}"
+            else:
+                chat_history.append({"role": role, "parts": [msg['content']]})
         
-        # Validation: Gemini chat history must alternate User/Model. 
-        # Only strict requirement is it typically starts with User.
+        # Validation: Chat must typically start with a 'user' message
+        if chat_history and chat_history[0]['role'] != 'user':
+            # Insert dummy user message if somehow model goes first
+            chat_history.insert(0, {"role": "user", "parts": ["Hi assistant."]})
         # Simplification: We will just form a strict context prompt if history is messy,
         # OR better: usage of valid history list.
         
@@ -604,11 +634,17 @@ def chat():
                     search_query = action_data.get('query', user_message)
                     
                     # PHASE 2: Style Matching Enhancement
-                    # If this is a vision search or describes aesthetic, boost the query
                     if any(word in user_message.lower() for word in ['style', 'vibe', 'look', 'aesthetic', 'like this']):
                         search_query += " style aesthetic design"
                         
                     all_products = search_products(search_query, limit=5)
+                    
+                    # PHASE 3: Price Intelligence Enrichment
+                    for p in all_products:
+                        price = float(p.get('price', 0))
+                        drop_alert = check_price_drop(p.get('id'), price)
+                        if drop_alert:
+                            p['price_alert'] = drop_alert
                     
                     # AI selects best 1-2 products
                     products = ai_select_products(search_query, all_products, max_products=2)
@@ -675,8 +711,11 @@ def chat():
                 elif action == 'open_camera':
                     # CAMERA TRIGGERED
                     ai_message = action_data.get('message', 'Sure, showing you the camera.')
-                    # We need to pass this action to frontend
-                    # We'll use a specific key in response_data later
+                    
+                # PHASE 3: Navigation Actions
+                elif action in ['scroll_down', 'open_cart', 'checkout']:
+                    response_data['action'] = action
+                    ai_message = action_data.get('message', f'Okay, performing {action}.')
                     
             except json.JSONDecodeError:
                 pass  # If JSON parsing fails, just continue with the text response
