@@ -17,6 +17,7 @@ export const useAssistant = () => {
     const [liveAiText, setLiveAiText] = useState('');
 
     const [isCameraOpen, setIsCameraOpen] = useState(false);
+    const [isCartOpen, setIsCartOpen] = useState(false);
     const [selectedProducts, setSelectedProducts] = useState([]);
 
     // Checkout state
@@ -35,6 +36,7 @@ export const useAssistant = () => {
     const shouldListenRef = useRef(true); // Always listen by default
     const isThinkingRef = useRef(false);
     const isSpeakingRef = useRef(false);
+    const scrollRef = useRef(null); // Ref for product container
 
     // Initialize Session
     useEffect(() => {
@@ -225,11 +227,23 @@ export const useAssistant = () => {
             setStatus('Camera Ready');
         }
 
-        // Handle Checkout Action
-        if (data.action === 'start_checkout') {
+        if (data.action === 'start_checkout' || data.action === 'checkout') {
             if (cartItems.length > 0) {
                 setCheckoutStage('review');
                 setStatus('Checkout');
+            }
+        }
+
+        // Navigation: Open Cart
+        if (data.action === 'open_cart') {
+            setIsCartOpen(true);
+            setStatus('Cart Opened');
+        }
+
+        // Navigation: Scroll Down
+        if (data.action === 'scroll_down') {
+            if (scrollRef.current) {
+                scrollRef.current.scrollBy({ top: 300, behavior: 'smooth' });
             }
         }
 
@@ -410,6 +424,8 @@ export const useAssistant = () => {
         liveAiText,
         isCameraOpen,
         setIsCameraOpen,
+        isCartOpen,
+        setIsCartOpen,
         analyzeImage,
         selectedProducts,
         selectProduct,
@@ -420,6 +436,7 @@ export const useAssistant = () => {
         clearCart,
         checkoutStage,
         setCheckoutStage,
+        scrollRef,
         analyser: analyserRef.current,
         startListening,
         stopListening,

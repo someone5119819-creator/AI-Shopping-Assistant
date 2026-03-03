@@ -38,13 +38,13 @@ function App() {
     status, isListening, isSpeaking, isThinking, analyser, products,
     liveUserText, liveAiText, isCameraOpen, setIsCameraOpen, analyzeImage,
     cartItems, cartCount, addToCart, viewCart, clearCart,
-    checkoutStage, setCheckoutStage,
-    startListening, stopListening, sendMessage
+    isCartOpen, setIsCartOpen,
+    checkoutStage, setCheckoutStage, scrollRef,
+    startListening, stopListening, sendMessage, handleResponse
   } = useAssistant();
 
   const [showInput, setShowInput] = useState(false);
   const [inputText, setInputText] = useState('');
-  const [isCartOpen, setIsCartOpen] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -252,16 +252,18 @@ function App() {
 
               {/* Checkout or Product Recommendations View */}
               <Fade in={checkoutStage !== null || products.length > 0} unmountOnExit>
-                <Box sx={{
-                  position: 'absolute',
-                  top: 0, left: 0, right: 0, bottom: 0,
-                  overflowY: 'auto',
-                  p: 2,
-                  zIndex: 2,
-                  '&::-webkit-scrollbar': { display: 'none' },
-                  msOverflowStyle: 'none',
-                  scrollbarWidth: 'none',
-                }}>
+                <Box
+                  ref={scrollRef} // Phase 3: Attach scroll ref
+                  sx={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    overflowY: 'auto',
+                    p: 2,
+                    zIndex: 2,
+                    '&::-webkit-scrollbar': { display: 'none' },
+                    msOverflowStyle: 'none',
+                    scrollbarWidth: 'none',
+                  }}>
                   {checkoutStage ? (
                     <InlineCheckout
                       stage={checkoutStage}
@@ -316,6 +318,20 @@ function App() {
                           }}>
                             {p.metadata.title}
                           </Typography>
+                          {p.metadata.price_alert && (
+                            <Chip
+                              label={p.metadata.price_alert}
+                              size="small"
+                              color="error"
+                              sx={{
+                                height: 20,
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                mb: 0.5,
+                                borderRadius: 1
+                              }}
+                            />
+                          )}
                           <Typography variant="body2" sx={{
                             color: '#059669',
                             fontWeight: 700,
