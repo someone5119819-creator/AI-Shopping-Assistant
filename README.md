@@ -3,9 +3,11 @@
 > Talk to an AI shopping expert that helps you find the perfect camera or audio gear — using your voice.
 
 ![Status](https://img.shields.io/badge/Status-Production_Ready-success)
-![Brain](https://img.shields.io/badge/Brain-Gemini_3_Pro-blue)
+![Brain](https://img.shields.io/badge/Brain-Gemini_Flash-blue)
 ![Voice](https://img.shields.io/badge/Voice-ElevenLabs_Turbo_v2-orange)
 ![Search](https://img.shields.io/badge/Search-Hybrid_RAG-green)
+![React](https://img.shields.io/badge/React-19.2-61DAFB)
+![MUI](https://img.shields.io/badge/MUI-v7.3.8-007FFF)
 
 ---
 
@@ -20,6 +22,9 @@ This is a **voice-powered AI shopping assistant** that acts like a real store ex
 - 🤖 **Smart Comparisons** — Ask it to compare two products for a technical, voice-friendly breakdown
 - 🌎 **Speak Your Language** — Automatically detects and responds in Spanish, French, and more
 - 📸 **Style Matching** — Mention a "vibe" or show a style you like, and the AI finds matching designs
+- 📉 **Price Intelligence** — Detects price drops and flags deals so you never overpay
+- 🗣️ **Voice UI Navigation** — Say "scroll down", "open my cart", or "checkout" to control the app hands-free
+- 🛒 **Smart Bundling** — The AI proactively suggests compatible accessories to build complete kits
 - 📱 **Installable App** — Fully functional PWA that you can add to your phone's home screen
 
 **Example conversation:**
@@ -229,7 +234,8 @@ The backend server must be running first. Check Terminal 1 and make sure you see
 - **Memory**: Persistent User Profiles (`shopping_profiles.json`) for cross-session learning
 
 ### Frontend (The "Face")
-- **Framework**: React 18 + Vite
+- **Framework**: React 19 + Vite 7
+- **UI Library**: MUI v7 (Material UI)
 - **Voice Input**: Web Speech API (STT)
 - **Voice Output**: HTML5 Audio (TTS via ElevenLabs)
 - **Visuals**: Canvas-based "Orb" visualizer that reacts to audio
@@ -258,6 +264,7 @@ The backend server must be running first. Check Terminal 1 and make sure you see
 ├── api.py                  # FastAPI search API (port 8000)
 ├── assistant_api.py        # Flask AI assistant (port 8001)
 ├── shopping_profiles.json   # LOCAL DB: Persistent user preferences
+├── price_history.json       # LOCAL DB: Product price tracking
 ├── chroma_db/               # LOCAL DB: Vector store for RAG
 ├── run_all.sh              # CUSTOM: Startup script (fuck u fukka)
 ├── kill_all.sh             # CUSTOM: Shutdown script (i fucked u fukka)
@@ -314,8 +321,9 @@ For developers who want to understand the internals:
 
 | Version | What Changed |
 |---------|-------------|
-| **v6.0** (Current) | **Future Features Phase 2**. Added Multi-language Support (Spanish, French, etc.), Visual Style Matching (aesthetic search), and PWA Support with a premium app icon. |
-| **v5.5** | **Future Features Phase 1**. Added Personalized Shopping Profiles (persistent learning) and AI-Powered Side-by-Side Comparisons. Upgraded to **Gemini Flash**. |
+| **v7.0** (Current) | **Phase 3 — Intelligence & Accessibility**. Added Price Intelligence (drop alerts), Voice UI Navigation (hands-free scrolling/cart/checkout), Smart Bundling (accessory suggestions), and Gemini turn-sequence fix. Updated all deps: MUI v7.3.8, React 19.2.4, TailwindCSS 4.2.1, Vite 7.3.1. |
+| **v6.0** | **Phase 2 — Future Features**. Added Multi-language Support (Spanish, French, etc.), Visual Style Matching (aesthetic search), and PWA Support with a premium app icon. |
+| **v5.5** | **Phase 1 — Future Features**. Added Personalized Shopping Profiles (persistent learning) and AI-Powered Side-by-Side Comparisons. Upgraded to **Gemini Flash**. |
 | **v5.0** (Beta) | **Vision & AR Integration**. Implemented Image Based Search with Camera UI, Live AR Object Detection & Realtime Optimization, and experimental Gemini Live API. |
 | **v4.5** | **New Assistant UI**. Enhanced assistant styling with refined orb animations, scaling support, and Active UI redesign. |
 | **v4.0** | **E-Commerce Integration**. Added robust Cart functionality, Conversational Checkout Flow with inline UI, and complete Shopify checkout integration. |
