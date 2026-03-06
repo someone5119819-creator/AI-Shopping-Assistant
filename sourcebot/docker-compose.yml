@@ -23,6 +23,7 @@ services:
       - SOURCEBOT_ENCRYPTION_KEY=pv9uIgnxFXszQkoFPfYoQfOew72nSyV+
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
       - REDIS_URL=redis://redis:6379
+      - GOOGLE_GENERATIVE_AI_API_KEY=${GEMINI_API_KEY}
 
   postgres:
     image: docker.io/postgres:16

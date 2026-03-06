@@ -71,5 +71,60 @@
             }
         ],
         "product_interactions": []
+    },
+    "session_1772712022.289007": {
+        "chat_history": [
+            {
+                "role": "user",
+                "content": "hey"
+            },
+            {
+                "role": "assistant",
+                "content": "Hello there! I'm here to help you find the perfect camera and audio gear. What kind of equipment are you looking for today, or what are you hoping to achieve with it?"
+            },
+            {
+                "role": "user",
+                "content": "I wanna record videos of ghosts in -50 C temp"
+            },
+            {
+                "role": "assistant",
+                "content": "That's a very specific and exciting use case! To make sure I find the best gear for you:\n\nFirst, for recording in such extreme cold, are you primarily looking for a camera that is inherently robust and weather-sealed, or would you consider protective housing for a standard camera?\n\nSecond, regarding \"ghosts,\" does this mean you'll need exceptional low-light performance, or perhaps specific features like infrared capabilities?"
+            },
+            {
+                "role": "system",
+                "content": "System Context: Found the following products:\n- HC-900A 20MP Outdoor Waterproof Infrared Camera (Price: N/A)\n- 4K Waterproof Infrared Camera for Outdoor Research (Price: N/A)\n"
+            },
+            {
+                "role": "user",
+                "content": "i want the infrared thingy"
+            },
+            {
+                "role": "assistant",
+                "content": "Great! I've found a couple of robust outdoor infrared cameras that could work for you.\n\nOne option provides very high-resolution still images with its 20-megapixel sensor, which could be useful for capturing detailed evidence. The other specializes in ultra-high-definition video recording, often called 4K, for very clear moving footage. Both are designed to be waterproof and handle outdoor conditions, and they feature infrared capabilities for low-light recording.\n\nWhich aspect is more important for your ghost hunting \u2013 very detailed still images or high-definition video?"
+            },
+            {
+                "role": "user",
+                "content": "mujhe nahi pta tu bta de please"
+            },
+            {
+                "role": "assistant",
+                "content": "\u091c\u093c\u0930\u0942\u0930, \u092e\u0948\u0902 \u0906\u092a\u0915\u0940 \u092e\u0926\u0926 \u0915\u0930 \u0938\u0915\u0924\u093e \u0939\u0942\u0901 \u092f\u0939 \u0938\u092e\u091d\u0928\u0947 \u092e\u0947\u0902 \u0915\u093f \u0915\u094c\u0928 \u0938\u093e \u092c\u0947\u0939\u0924\u0930 \u0939\u094b\u0917\u093e\u0964\n\n\u090f\u0915 \u0915\u0948\u092e\u0930\u093e \u091c\u094b 20-\u092e\u0947\u0917\u093e\u092a\u093f\u0915\u094d\u0938\u0932 \u0915\u0940 \u0924\u0938\u094d\u0935\u0940\u0930\u0947\u0902 \u0932\u0947\u0924\u093e \u0939\u0948, \u0935\u0939 \u092d\u0942\u0924\u094b\u0902 \u0915\u0947 \u0915\u093f\u0938\u0940 \u092d\u0940 \u0938\u092c\u0942\u0924 \u0915\u094b \u092c\u0939\u0941\u0924 \u0935\u093f\u0938\u094d\u0924\u093e\u0930 \u0938\u0947 \u0915\u0948\u092a\u094d\u091a\u0930 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u0909\u0924\u094d\u0915\u0943\u0937\u094d\u091f \u0939\u094b\u0917\u093e, \u091c\u0939\u093e\u0901 \u090f\u0915 \u0938\u094d\u0925\u093f\u0930, \u0938\u094d\u092a\u0937\u094d\u091f \u091b\u0935\u093f \u092e\u0939\u0924\u094d\u0935\u092a\u0942\u0930\u094d\u0923 \u0939\u094b\u0964\n\n\u0935\u0939\u0940\u0902, 4K \u0935\u0940\u0921\u093f\u092f\u094b \u0930\u093f\u0915\u0949\u0930\u094d\u0921 \u0915\u0930\u0928\u0947 \u0935\u093e\u0932\u093e \u0915\u0948\u092e\u0930\u093e \u0906\u092a\u0915\u094b \u0915\u093f\u0938\u0940 \u092d\u0940 \u0917\u0924\u093f\u0935\u093f\u0927\u093f \u092f\u093e \u0917\u0924\u093f \u0915\u094b \u0905\u0924\u094d\u092f\u0902\u0924 \u0938\u094d\u092a\u0937\u094d\u091f\u0924\u093e \u0915\u0947 \u0938\u093e\u0925 \u0926\u0947\u0916\u0928\u0947 \u092e\u0947\u0902 \u092e\u0926\u0926 \u0915\u0930\u0947\u0917\u093e, \u091c\u094b \u0936\u093e\u092f\u0926 \u092d\u0942\u0924\u094b\u0902 \u0915\u0947 \u091a\u0932\u0928\u0947 \u092f\u093e \u0915\u093f\u0938\u0940 \u0918\u091f\u0928\u093e \u0915\u094b \u0930\u093f\u0915\u0949\u0930\u094d\u0921 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u092c\u0947\u0939\u0924\u0930 \u0939\u094b\u0964\n\n\u0924\u094b, \u0915\u094d\u092f\u093e \u0906\u092a\u0915\u0947 \u0932\u093f\u090f \u0915\u093f\u0938\u0940 \u091a\u0940\u091c\u093c \u0915\u093e \u0938\u094d\u0925\u093f\u0930, \u0935\u093f\u0938\u094d\u0924\u0943\u0924 \u0938\u092c\u0942\u0924 \u091c\u093c\u094d\u092f\u093e\u0926\u093e \u091c\u093c\u0930\u0942\u0930\u0940 \u0939\u0948, \u092f\u093e \u0906\u092a \u0915\u093f\u0938\u0940 \u092d\u0940 \u0917\u0924\u093f\u0935\u093f\u0927\u093f \u0915\u094b \u091a\u0932\u0924\u0947 \u0939\u0941\u090f, \u092c\u0939\u0941\u0924 \u0938\u093e\u092b\u093c \u0935\u0940\u0921\u093f\u092f\u094b \u092e\u0947\u0902 \u0915\u0948\u0926 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u0947 \u0939\u0948\u0902?"
+            },
+            {
+                "role": "user",
+                "content": "that sucks mf"
+            },
+            {
+                "role": "assistant",
+                "content": "\u092e\u093e\u092b\u093c\u0940 \u091a\u093e\u0939\u0924\u093e \u0939\u0942\u0901 \u0905\u0917\u0930 \u092e\u0947\u0930\u0940 \u092c\u093e\u0924 \u0938\u094d\u092a\u0937\u094d\u091f \u0928\u0939\u0940\u0902 \u0925\u0940\u0964 \u092e\u0948\u0902 \u0906\u092a\u0915\u0940 \u0928\u093f\u0930\u093e\u0936\u093e \u0938\u092e\u091d \u0938\u0915\u0924\u093e \u0939\u0942\u0901\u0964\n\n\u0915\u094d\u092f\u093e \u0906\u092a \u091a\u093e\u0939\u0947\u0902\u0917\u0947 \u0915\u093f \u092e\u0948\u0902 \u0906\u092a\u0915\u094b \u0905\u0902\u0917\u094d\u0930\u0947\u091c\u093c\u0940 \u092e\u0947\u0902 \u091c\u0935\u093e\u092c \u0926\u0942\u0901, \u0905\u0917\u0930 \u0935\u0939 \u0906\u092a\u0915\u0947 \u0932\u093f\u090f \u091c\u093c\u094d\u092f\u093e\u0926\u093e \u0906\u0938\u093e\u0928 \u0939\u094b?\n\n\u092e\u0947\u0930\u093e \u092e\u0924\u0932\u092c \u0925\u093e \u0915\u093f, \u0915\u094d\u092f\u093e \u0906\u092a \u092d\u0942\u0924 \u0915\u0940 \u0917\u0924\u093f\u0935\u093f\u0927\u093f\u092f\u094b\u0902 \u0915\u0940 \u092c\u0939\u0941\u0924 \u0938\u093e\u092b\u093c, \u0938\u094d\u0925\u093f\u0930 \u0924\u0938\u094d\u0935\u0940\u0930\u0947\u0902 \u0932\u0947\u0928\u093e \u091a\u093e\u0939\u0924\u0947 \u0939\u0948\u0902, \u092f\u093e \u0906\u092a \u0909\u0928\u0915\u0940 \u0939\u0930\u0915\u0924 \u0915\u093e \u092c\u0939\u0941\u0924 \u0938\u093e\u092b\u093c \u0935\u0940\u0921\u093f\u092f\u094b \u0930\u093f\u0915\u0949\u0930\u094d\u0921 \u0915\u0930\u0928\u093e \u091a\u093e\u0939\u0924\u0947 \u0939\u0948\u0902?"
+            }
+        ],
+        "affinity": "None",
+        "skill": "specialized",
+        "style": "paranormal/extreme conditions",
+        "product_interactions": [
+            "HC-900A 20MP Outdoor Waterproof Infrared Camera",
+            "4K Waterproof Infrared Camera for Outdoor Research"
+        ]
     }
 }

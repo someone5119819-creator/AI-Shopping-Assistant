@@ -326,7 +326,7 @@ For developers who want to understand the internals:
 
 | Version | What Changed |
 |---------|-------------|
-| **v7.0** (Current) | **Phase 3 — Intelligence & Accessibility**. Added Price Intelligence (drop alerts), Voice UI Navigation (hands-free scrolling/cart/checkout), Smart Bundling (accessory suggestions), and **Chat Memory & Local Q&A Bypass** (saves Gemini quota by caching responses). Updated to **Gemini 2.5 Flash**. |
+| **v7.0** (Current) | **Phase 3 — Intelligence & Accessibility**. Added Price Intelligence (drop alerts), Voice UI Navigation (hands-free scrolling/cart/checkout), Smart Bundling (accessory suggestions), and **Chat Memory & Local Q&A Bypass** (saves Gemini quota by caching responses). Updated to **Gemini 2.5 Flash**. Embedded **Sourcebot Code Search** for developer codebase indexing. |
 | **v6.0** | **Phase 2 — Future Features**. Added Multi-language Support (Spanish, French, etc.), Visual Style Matching (aesthetic search), and PWA Support with a premium app icon. |
 | **v5.5** | **Phase 1 — Future Features**. Added Personalized Shopping Profiles (persistent learning) and AI-Powered Side-by-Side Comparisons. Upgraded to **Gemini Flash**. |
 | **v5.0** (Beta) | **Vision & AR Integration**. Implemented Image Based Search with Camera UI, Live AR Object Detection & Realtime Optimization, and experimental Gemini Live API. |
